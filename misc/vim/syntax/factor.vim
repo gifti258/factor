@@ -123,29 +123,29 @@ syn cluster factorHelp              contains=factorHelp
 syn region  factorHelp              start=/\v<HELP:>/            skip=/\v<!>.*/     end=/\v<\S+>/   contains=@factorComment
 syn match   factorHelp              /\v<%(ARTICLE|ABOUT):>/     display
 
-syn region  factorDefn  matchgroup=NONE  start=/\v<%(SYNTAX|CONSTRUCTOR|%(M|MACRO|MEMO|TYPED)?:?):>/  skip=/\v<!>.*/  matchgroup=factorDefnDelims  end=/\v<;>/  contains=factorDefnDelims,@factorCluster keepend transparent
-syn region  factorDefnDelims        start=/\v<SYNTAX:>/                            skip=/\v<!>.*/  end=/\v<\S+>/  contains=@factorComment skipempty keepend contained
-syn region  factorDefnDelims        start=/\v<%(MACRO|MEMO|TYPED)?:?:>/            skip=/\v<!>.*/  end=/\v<\S+>/  contains=@factorComment nextgroup=factorEffectSkip skipempty keepend contained
-syn region  factorDefnDelims        start=/\v<M:>/                                 skip=/\v<!>.*/  end=/\v<\S+%(\_\s+%(!>.*)?)+\S+>/   contains=@factorComment skipempty keepend contained
-syn region  factorDefnDelims        start=/\v<M::>/                                skip=/\v<!>.*/  end=/\v<\S+%(\_\s+%(!>.*)?)+\S+>/   contains=@factorComment nextgroup=factorEffectSkip skipempty keepend contained
+syn region  factorDefn  matchgroup=NONE  start=/\v<%(SYNTAX|syntax|CONSTRUCTOR|%(M|MACRO|MEMO|TYPED|m|macro|memo)?:?):>/  skip=/\v<!>.*/  matchgroup=factorDefnDelims  end=/\v<;>/  contains=factorDefnDelims,@factorCluster keepend transparent
+syn region  factorDefnDelims        start=/\v<(SYNTAX|syntax):>/                            skip=/\v<!>.*/  end=/\v<\S+>/  contains=@factorComment skipempty keepend contained
+syn region  factorDefnDelims        start=/\v<%(MACRO|MEMO|TYPED|macro|memo)?:?:>/            skip=/\v<!>.*/  end=/\v<\S+>/  contains=@factorComment nextgroup=factorEffectSkip skipempty keepend contained
+syn region  factorDefnDelims        start=/\v<(M|m):>/                                 skip=/\v<!>.*/  end=/\v<\S+%(\_\s+%(!>.*)?)+\S+>/   contains=@factorComment skipempty keepend contained
+syn region  factorDefnDelims        start=/\v<(M|m)::>/                                skip=/\v<!>.*/  end=/\v<\S+%(\_\s+%(!>.*)?)+\S+>/   contains=@factorComment nextgroup=factorEffectSkip skipempty keepend contained
 syn region  factorDefnDelims        start=/\v<CONSTRUCTOR:>/                       skip=/\v<!>.*/  end=/\v<\S+%(\_\s+%(!>.*)?)+\S+>/   contains=@factorComment nextgroup=factorEffectSkip skipempty keepend contained
-syn region  factorDeclDelims        start=/\v<%(GENERIC|MATH|PRIMITIVE):>/         skip=/\v<!>.*/  end=/\v<\S+>/                       contains=@factorComment nextgroup=factorEffectSkip skipempty keepend
-syn region  factorDeclDelims        start=/\v<GENERIC\#:>/                         skip=/\v<!>.*/  end=/\v<\S+%(\_\s+%(!>.*)?)+\d+>/   contains=@factorComment nextgroup=factorEffectSkip skipempty keepend
-syn region  factorDeclDelims        start=/\v<HOOK:>/                              skip=/\v<!>.*/  end=/\v<\S+%(\_\s+%(!>.*)?)+\S+>/   contains=@factorComment nextgroup=factorEffectSkip skipempty keepend
-syn region  factorDeclDelims        start=/\v<C:>/                                 skip=/\v<!>.*/  end=/\v<\S+%(\_\s+%(!>.*)?)+\S+>/   contains=@factorComment skipempty keepend
+syn region  factorDeclDelims        start=/\v<%(GENERIC|MATH|PRIMITIVE|generac|math):>/         skip=/\v<!>.*/  end=/\v<\S+>/                       contains=@factorComment nextgroup=factorEffectSkip skipempty keepend
+syn region  factorDeclDelims        start=/\v<(GENERIC|generic)\#:>/                         skip=/\v<!>.*/  end=/\v<\S+%(\_\s+%(!>.*)?)+\d+>/   contains=@factorComment nextgroup=factorEffectSkip skipempty keepend
+syn region  factorDeclDelims        start=/\v<(HOOK|hook):>/                              skip=/\v<!>.*/  end=/\v<\S+%(\_\s+%(!>.*)?)+\S+>/   contains=@factorComment nextgroup=factorEffectSkip skipempty keepend
+syn region  factorDeclDelims        start=/\v<(C|c):>/                                 skip=/\v<!>.*/  end=/\v<\S+%(\_\s+%(!>.*)?)+\S+>/   contains=@factorComment skipempty keepend
 
-syn region  factorPDefn  matchgroup=NONE  start=/\v<%(SYNTAX|CONSTRUCTOR|%(M|MACRO|MEMO|TYPED)?:?):>/  skip=/\v<!>.*/  matchgroup=factorPDefnDelims  end=/\v<;>/  contains=factorPDefnDelims,@factorCluster keepend contained
-syn region  factorPDefnDelims       start=/\v<SYNTAX:>/                            skip=/\v<!>.*/  end=/\v<\S+>/                       contains=@factorComment skipempty keepend contained
-syn region  factorPDefnDelims       start=/\v<%(MACRO|MEMO|TYPED)?:?:>/            skip=/\v<!>.*/  end=/\v<\S+>/                       contains=@factorComment nextgroup=factorEffectSkip skipempty keepend contained
-syn region  factorPDefnDelims       start=/\v<M:>/                                 skip=/\v<!>.*/  end=/\v<\S+%(\_\s+%(!>.*)?)+\S+>/   contains=@factorComment skipempty keepend contained
-syn region  factorPDefnDelims       start=/\v<M::>/                                skip=/\v<!>.*/  end=/\v<\S+%(\_\s+%(!>.*)?)+\S+>/   contains=@factorComment nextgroup=factorEffectSkip skipempty keepend contained
+syn region  factorPDefn  matchgroup=NONE  start=/\v<%(SYNTAX|syntax|CONSTRUCTOR|%(M|MACRO|MEMO|TYPED|macro|memo)?:?):>/  skip=/\v<!>.*/  matchgroup=factorPDefnDelims  end=/\v<;>/  contains=factorPDefnDelims,@factorCluster keepend contained
+syn region  factorPDefnDelims       start=/\v<(SYNTAX|syntax):>/                            skip=/\v<!>.*/  end=/\v<\S+>/                       contains=@factorComment skipempty keepend contained
+syn region  factorPDefnDelims       start=/\v<%(MACRO|MEMO|TYPED|macro|memo)?:?:>/            skip=/\v<!>.*/  end=/\v<\S+>/                       contains=@factorComment nextgroup=factorEffectSkip skipempty keepend contained
+syn region  factorPDefnDelims       start=/\v<(M|m):>/                                 skip=/\v<!>.*/  end=/\v<\S+%(\_\s+%(!>.*)?)+\S+>/   contains=@factorComment skipempty keepend contained
+syn region  factorPDefnDelims       start=/\v<(M|m)::>/                                skip=/\v<!>.*/  end=/\v<\S+%(\_\s+%(!>.*)?)+\S+>/   contains=@factorComment nextgroup=factorEffectSkip skipempty keepend contained
 syn region  factorPDefnDelims       start=/\v<CONSTRUCTOR:>/                       skip=/\v<!>.*/  end=/\v<\S+%(\_\s+%(!>.*)?)+\S+>/   contains=@factorComment nextgroup=factorEffectSkip skipempty keepend contained
-syn region  factorPDeclDelims       start=/\v<%(GENERIC|MATH|PRIMITIVE):>/         skip=/\v<!>.*/  end=/\v<\S+>/                       contains=@factorComment nextgroup=factorEffectSkip skipempty keepend contained
-syn region  factorPDeclDelims       start=/\v<GENERIC\#:>/                         skip=/\v<!>.*/  end=/\v<\S+%(\_\s+%(!>.*)?)+\d+>/   contains=@factorComment nextgroup=factorEffectSkip skipempty keepend contained
-syn region  factorPDeclDelims       start=/\v<HOOK:>/                              skip=/\v<!>.*/  end=/\v<\S+%(\_\s+%(!>.*)?)+\S+>/   contains=@factorComment nextgroup=factorEffectSkip skipempty keepend contained
-syn region  factorPDeclDelims       start=/\v<C:>/                                 skip=/\v<!>.*/  end=/\v<\S+%(\_\s+%(!>.*)?)+\S+>/   contains=@factorComment skipempty keepend contained
+syn region  factorPDeclDelims       start=/\v<%(GENERIC|MATH|PRIMITIVE|generic):>/         skip=/\v<!>.*/  end=/\v<\S+>/                       contains=@factorComment nextgroup=factorEffectSkip skipempty keepend contained
+syn region  factorPDeclDelims       start=/\v<(GENERIC|generic)\#:>/                         skip=/\v<!>.*/  end=/\v<\S+%(\_\s+%(!>.*)?)+\d+>/   contains=@factorComment nextgroup=factorEffectSkip skipempty keepend contained
+syn region  factorPDeclDelims       start=/\v<(HOOK|hook):>/                              skip=/\v<!>.*/  end=/\v<\S+%(\_\s+%(!>.*)?)+\S+>/   contains=@factorComment nextgroup=factorEffectSkip skipempty keepend contained
+syn region  factorPDeclDelims       start=/\v<(C|c):>/                                 skip=/\v<!>.*/  end=/\v<\S+%(\_\s+%(!>.*)?)+\S+>/   contains=@factorComment skipempty keepend contained
 
-syn region  factorPrivate           start=/\v<\<PRIVATE>/ end=/\v<PRIVATE\>>/ contains=@factorCluster,factorPDefn,factorPDeclDelims skipempty keepend
+syn region  factorPrivate           start=/\v<\<(PRIVATE|private)>/ end=/\v<(PRIVATE|private)\>>/ contains=@factorCluster,factorPDefn,factorPDeclDelims skipempty keepend
 
 syn keyword factorBoolean           f t
 syn keyword factorBreakpoint        B
@@ -155,7 +155,7 @@ syn keyword factorDeclaration       delimiter deprecated final flushable foldabl
 syn region  factorCall  matchgroup=factorCallDelims  start=/\v<%(call|execute)\V(\v>/  end=/\v<\V)\v>/ contains=@factorEffectContents
 syn keyword factorCallNextMethod    call-next-method
 
-syn region  factorChar              start=/\v<CHAR:>/  end=/\v\S+>/
+syn region  factorChar              start=/\v<(CHAR|char):>/  end=/\v\S+>/
 syn region  factorColor             start=/\v<COLOR:>/ end=/\v\S+>/
 
 syn match   factorEscape            /\v\\([\\astnrbvfe\"]|u\x{6}|u\{\S+}|x\x{2}|\o{1,3})/  contained display
@@ -242,7 +242,7 @@ syn match   factorTupleSlotClassSkip    /\v%(\_\s+%(!>.*)?)*/ contains=@factorCo
 syn region  factorTupleSlot   matchgroup=factorTupleSlotDelims  start=/\v<\{>/                end=/\v<\}>/    contains=@factorComment,factorTupleSlotName,@factorTupleSlotAttr contained
 "syn match   factorTupleClass            /\v<\S+>/ nextgroup=factorTupleSuperClass,factorTupleSlot contained
 "syn region  factorTupleSuperClass  matchgroup=NONE     start=/\v%(\s+\<\s+)/     matchgroup=Identifier end=/\v<\S+>/   contains=@factorComment contained nextgroup=factorTupleSlot
-syn region  factorTuple   matchgroup=factorTupleDelims          start=/\v<%(TUPLE|BUILTIN|ERROR):>/ end=/\v<;>/     contains=@factorComment,factorTupleSlot
+syn region  factorTuple   matchgroup=factorTupleDelims          start=/\v<%(TUPLE|BUILTIN|ERROR|tuple|error):>/ end=/\v<;>/     contains=@factorComment,factorTupleSlot
 syn region  factorPredicate   matchgroup=factorPredicateDelims  start=/\v<%(PREDICATE):>/     end=/\v<;>/     contains=@factorComment,factorTupleSlot
 
 syn match   factorStructSlotAttrBits    /\v<bits:>%(\_\s+%(!>.*)?)+/    contains=@factorComment nextgroup=factorWord,@factorReal contained
@@ -254,31 +254,32 @@ syn match   factorStructSlotTypeSkip    /\v%(\_\s+%(!>.*)?)*/ contains=@factorCo
 syn region  factorStructSlot      matchgroup=factorStructSlotDelims start=/\v<\{>/                   skip=/\v<!>.*/  end=/\v<\}>/ contains=@factorComment,factorStructSlotName,@factorStructSlotAttr contained
 syn region  factorStruct          matchgroup=factorStructDelims     start=/\v<%(%(UNION-)?STRUCT):>/ skip=/\v<!>.*/  end=/\v<;>/  contains=@factorComment,factorStructSlot
 
-syn region  factorAlias             start=/\v<ALIAS:>/           skip=/\v<!>.*/     end=/\v<\S+%(\_\s+%(!>.*)?)+\S+>/   contains=@factorComment keepend
+syn region  factorAlias             start=/\v<(ALIAS|alias):>/           skip=/\v<!>.*/     end=/\v<\S+%(\_\s+%(!>.*)?)+\S+>/   contains=@factorComment keepend
 syn region  factorAlien             start=/\v<ALIEN:>/           skip=/\v<!>.*/     end=/\v<\S+>/   contains=@factorComment,@factorHexNoRadix
-syn region  factorConstant          start=/\v<CONSTANT:>/        skip=/\v<!>.*/     end=/\v<\S+>/   contains=@factorComment
-syn region  factorDefer             start=/\v<DEFER:>/           skip=/\v<!>.*/     end=/\v<\S+>/   contains=@factorComment
-syn region  factorExclude           start=/\v<EXCLUDE:>/         skip=/\v<!>.*/     end=/\v<;>/     contains=@factorComment
-syn region  factorForget            start=/\v<FORGET:>/          skip=/\v<!>.*/     end=/\v<\S+>/   contains=@factorComment
-syn region  factorFrom              start=/\v<FROM:>/            skip=/\v<!>.*/     end=/\v<;>/     contains=@factorComment
-syn region  factorIn                start=/\v<IN:>/              skip=/\v<!>.*/     end=/\v<\S+>/   contains=@factorComment
-syn region  factorInstance          start=/\v<INSTANCE:>/        skip=/\v<!>.*/     end=/\v<\S+%(\_\s+%(!>.*)?)+\S+>/   contains=@factorComment keepend
-syn region  factorIntersection      start=/\v<INTERSECTION:>/    skip=/\v<!>.*/     end=/\v<;>/     contains=@factorComment
-syn region  factorMain              start=/\v<MAIN:>/            skip=/\v<!>.*/     end=/\v<\S+>/   contains=@factorComment
-syn region  factorMixin             start=/\v<MIXIN:>/           skip=/\v<!>.*/     end=/\v<\S+>/   contains=@factorComment
-syn region  factorPostpone          start=/\v<POSTPONE:>/        skip=/\v<!>.*/     end=/\v<\S+>/   contains=@factorComment
-syn region  factorQualified         start=/\v<QUALIFIED:>/       skip=/\v<!>.*/     end=/\v<\S+>/   contains=@factorComment
-syn region  factorQualifiedWith     start=/\v<QUALIFIED-WITH:>/  skip=/\v<!>.*/     end=/\v<\S+%(\_\s+%(!>.*)?)+\S+>/   contains=@factorComment keepend
-syn region  factorRename            start=/\v<RENAME:>/          skip=/\v<!>.*/     end=/\v<\S+%(\_\s+%(!>.*)?)+\S+%(\_\s+%(!>.*)?)+\=\>%(\_\s+%(!>.*)?)+\S+>/  contains=@factorComment keepend
-syn region  factorSingleton         start=/\v<SINGLETON:>/       skip=/\v<!>.*/     end=/\v<\S+>/   contains=@factorComment
-syn region  factorSingletons        start=/\v<SINGLETONS:>/      skip=/\v<!>.*/     end=/\v<;>/     contains=@factorComment
-syn region  factorSlot              start=/\v<SLOT:>/            skip=/\v<!>.*/     end=/\v<\S+>/   contains=@factorComment
-syn region  factorSymbol            start=/\v<SYMBOL:>/          skip=/\v<!>.*/     end=/\v<\S+>/   contains=@factorComment
-syn region  factorSymbols           start=/\v<SYMBOLS:>/         skip=/\v<!>.*/     end=/\v<;>/     contains=@factorComment
-syn region  factorUnion             start=/\v<UNION:>/           skip=/\v<!>.*/     end=/\v<;>/     contains=@factorComment
-syn region  factorUnuse             start=/\v<UNUSE:>/           skip=/\v<!>.*/     end=/\v<\S+>/   contains=@factorComment
-syn region  factorUse               start=/\v<USE:>/             skip=/\v<!>.*/     end=/\v<\S+>/   contains=@factorComment
-syn region  factorUsing             start=/\v<USING:>/           skip=/\v<!>.*/     end=/\v<;>/     contains=@factorComment
+syn region  factorConstant          start=/\v<(CONSTANT|constant):>/        skip=/\v<!>.*/     end=/\v<\S+>/   contains=@factorComment
+syn region  factorDefer             start=/\v<(DEFER|defer):>/           skip=/\v<!>.*/     end=/\v<\S+>/   contains=@factorComment
+syn region  factorExclude           start=/\v<(EXCLUDE|exclude):>/         skip=/\v<!>.*/     end=/\v<;>/     contains=@factorComment
+syn region  factorForget            start=/\v<(FORGET|forget):>/          skip=/\v<!>.*/     end=/\v<\S+>/   contains=@factorComment
+syn region  factorFrom              start=/\v<(FROM|from):>/            skip=/\v<!>.*/     end=/\v<;>/     contains=@factorComment
+syn region  factorIn                start=/\v<(IN|in):>/              skip=/\v<!>.*/     end=/\v<\S+>/   contains=@factorComment
+syn region  factorInstance          start=/\v<(INSTANCE|instace):>/        skip=/\v<!>.*/     end=/\v<\S+%(\_\s+%(!>.*)?)+\S+>/   contains=@factorComment keepend
+syn region  factorIntersection      start=/\v<(INTERSECTION|intersection):>/    skip=/\v<!>.*/     end=/\v<;>/     contains=@factorComment
+syn region  factorMain              start=/\v<(MAIN|main):>/            skip=/\v<!>.*/     end=/\v<\S+>/   contains=@factorComment
+syn region  factorMixin             start=/\v<(MIXIN|mixin):>/           skip=/\v<!>.*/     end=/\v<\S+>/   contains=@factorComment
+syn region  factorPostpone          start=/\v<(POSTPONE|postpone):>/        skip=/\v<!>.*/     end=/\v<\S+>/   contains=@factorComment
+syn region  factorQualified         start=/\v<(QUALIFIED|qualified):>/       skip=/\v<!>.*/     end=/\v<\S+>/   contains=@factorComment
+syn region  factorQualifiedWith     start=/\v<(QUALIFIED-WITH|qualified-with):>/  skip=/\v<!>.*/     end=/\v<\S+%(\_\s+%(!>.*)?)+\S+>/   contains=@factorComment keepend
+syn region  factorRename            start=/\v<(RENAME|rename):>/          skip=/\v<!>.*/     end=/\v<\S+%(\_\s+%(!>.*)?)+\S+%(\_\s+%(!>.*)?)+\=\>%(\_\s+%(!>.*)?)+\S+>/  contains=@factorComment keepend
+syn region  factorSingleton         start=/\v<(SINGLETON|singleton):>/       skip=/\v<!>.*/     end=/\v<\S+>/   contains=@factorComment
+syn region  factorSingletons        start=/\v<(SINGLETONS|singletons):>/      skip=/\v<!>.*/     end=/\v<;>/     contains=@factorComment
+syn region  factorSlot              start=/\v<(SLOT|slot):>/            skip=/\v<!>.*/     end=/\v<\S+>/   contains=@factorComment
+syn region  factorSymbol            start=/\v<(SYMBOL|symbol):>/          skip=/\v<!>.*/     end=/\v<\S+>/   contains=@factorComment
+syn region  factorSymbols           start=/\v<(SYMBOLS|symbols):>/         skip=/\v<!>.*/     end=/\v<;>/     contains=@factorComment
+syn region  factorUnion             start=/\v<(UNION|union):>/           skip=/\v<!>.*/     end=/\v<;>/     contains=@factorComment
+syn region  factorUnuse             start=/\v<(UNUSE|unuse):>/           skip=/\v<!>.*/     end=/\v<\S+>/   contains=@factorComment
+syn region  factorUse               start=/\v<(USE|use):>/             skip=/\v<!>.*/     end=/\v<\S+>/   contains=@factorComment
+syn region  factorUsing             start=/\v<(USING|using):>/           skip=/\v<!>.*/     end=/\v<;>/     contains=@factorComment
+syn match  factorEbnf /\v<(EBNF|ebnf): [^ ]+>/
 
 syn cluster factorWordOps   contains=factorConstant,factorAlias,factorSingleton,factorSingletons,factorSymbol,factorSymbols,factorPostpone,factorDefer,factorForget,factorMixin,factorInstance,factorHook,factorMain
 
@@ -472,6 +473,7 @@ if !exists('g:factor_syn_no_init')
   HiLink   factorStructSlotDelims       factorSlotDelims
   HiLink   factorStructSlotName         factorSlotName
   HiLink   factorStructSlotType         factorSlotType
+  HiLink   factorEbnf                   Typedef
 
   if &bg == 'dark'
     hi   hlLevel0 ctermfg=red           guifg=red1

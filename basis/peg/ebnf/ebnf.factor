@@ -558,6 +558,8 @@ SYNTAX: EBNF:
     ( input -- ast ) define-declared
     "ebnf-parser" set-word-prop ;
 
+ALIAS: ebnf: EBNF:
+
 SYNTAX: PARTIAL-EBNF:
     scan-new-word
     scan-word "ebnf-quot" word-prop

@@ -26,6 +26,9 @@ function! GetFactorIndent(lnum)
 	if pline =~ '^\(ALIAS\|C\|CONSTANT\|DEFER\|FORGET\|GENERIC#\?\|HELP\|\(\(SHUTDOWN\|STARTUP\)-\)\?HOOK\|IN\|INSTANCE\|MAIN\|MATH\|MIXIN\|PRIMITIVE\|QUALIFIED\(-WITH\)\?\|RENAME\|SINGLETON\|SLOT\|SYMBOL\|USE\|USING\):'
 		let pind -= shiftwidth()
 	endif
+	if pline =~ '^\(alias\|c\|constant\|defer\|forget\|generic#\?\|help\|\(\(shutdown\|startup\)-\)\?hook\|in\|instance\|main\|math\|mixin\|primitive\|qualified\(-with\)\?\|rename\|singleton\|slot\|symbol\|use\|using\):'
+		let pind -= shiftwidth()
+	endif
 	if pline =~ ';\( \(inline\|recursive\|foldable\|flushable\)\)*$'
 		let pind -= shiftwidth()
 	endif

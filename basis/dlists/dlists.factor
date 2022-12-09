@@ -215,4 +215,6 @@ INSTANCE: dlist deque
 
 SYNTAX: DL{ \ } [ >dlist ] parse-literal ;
 
+ALIAS: dl{ DL{
+
 { "dlists" "prettyprint" } "dlists.prettyprint" require-when

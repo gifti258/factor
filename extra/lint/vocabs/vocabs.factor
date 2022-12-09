@@ -93,14 +93,20 @@ DEFER: next-token
         ! prune syntax stuff
         { "FROM:"     [ ";" skip-after f ] }
         { "SYMBOLS:"  [ ";" skip-after f ] }
+        { "from:"     [ ";" skip-after f ] }
+        { "symbols:"  [ ";" skip-after f ] }
         { "R/"        [ "/" skip-after f ] }
         { "("         [ ")" skip-after f ] }
         { "IN:"       [     skip-token f ] }
         { "SYMBOL:"   [     skip-token f ] }
+        { "in:"       [     skip-token f ] }
+        { "symbol:"   [     skip-token f ] }
         { ":"         [     skip-token f ] }
         { "POSTPONE:" [     skip-token f ] }
+        { "postpone:" [     skip-token f ] }
         { "\\"        [     skip-token f ] }
         { "CHAR:"     [     skip-token f ] }
+        { "char:"     [     skip-token f ] }
 
         ! comments
         { "!"           [             next-line f ] }
@@ -170,6 +176,8 @@ DEFER: next-token
     dup next { 
         { "USING:"  [ ";" skip-after* f ] }
         { "USE:"    [        advance  f ] }
+        { "using:"  [ ";" skip-after* f ] }
+        { "use:"    [        advance  f ] }
         [ ]
     } case ;
 
@@ -177,6 +185,8 @@ DEFER: next-token
     dup next {
         { "USING:" [ ";" take-until-object ] }
         { "USE:"   [  1  take-n ] }
+        { "using:" [ ";" take-until-object ] }
+        { "use:"   [  1  take-n ] }
         [ 2drop f ]
     } case ;
 
@@ -211,9 +221,10 @@ DEFER: next-token
 :: print-unused-vocabs ( name seq -- )
     name "The following vocabs are unused in %s: \n" printf
     seq [ "    - " prepend print ] each 
-    seq print-new-header
-    nl
-    nl ;
+    ! seq print-new-header
+    ! nl
+    ! nl
+    ;
 
 : print-no-unused-vocabs ( name _ -- )
     drop "No unused vocabs found in %s.\n" printf ;
