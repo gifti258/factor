@@ -549,7 +549,8 @@ HELP: find-index-from
           { "quot" { $quotation ( ... elt i -- ... ? ) } }
           { "i" { $maybe "the index of the first match" } }
           { "elt" { $maybe "the first matching element" } } }
-{ $description "A variant of " { $link find-from } " where the quotation takes both an element and its index." } ;
+{ $description "A variant of " { $link find-from } " where the quotation takes both an element and its index."
+  "The search starts from list index " { $snippet "n" } ", skipping elements up until that index." } ;
 
 HELP: map-find
 { $values { "seq" sequence } { "quot" { $quotation ( ... elt -- ... result/f ) } } { "result" "the first non-false result of the quotation" } { "elt" { $maybe "the first matching element" } } }
@@ -857,8 +858,8 @@ HELP: >slice<
 
 HELP: >underlying<
 { $values
-    { "slice/seq" object }
-    { "i" integer } { "n" integer }
+    { "slice/seq" { $or slice sequence } }
+    { "from" integer } { "to" integer }
 }
 { $description "Sets up the stack for iteration with slots from a " { $link sequence } ". Used with iteration in words such as " { $link sequence-operator } "." } ;
 
