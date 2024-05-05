@@ -52,7 +52,7 @@ code_block* callback_heap::add(cell owner, cell return_rewind) {
   // code_template is a 2-tuple where the first element contains the
   // relocations and the second a byte array of compiled assembly
   // code. The code assumes that there are four relocations on x86 and
-  // three on ppc.
+  // three on ppc and arm.
   tagged<array> code_template(parent->special_objects[CALLBACK_STUB]);
   tagged<byte_array> insns(array_nth(code_template.untagged(), 1));
   cell size = array_capacity(insns.untagged());

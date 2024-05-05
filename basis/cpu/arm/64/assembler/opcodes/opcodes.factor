@@ -1,118 +1,45 @@
 ! Copyright (C) 2020 Doug Coleman.
 ! Copyright (C) 2023 Giftpflanze.
 ! See https://factorcode.org/license.txt for BSD license.
-USING: accessors assocs classes.error classes.parser effects
-effects.parser endian kernel lexer make math math.bitwise
-math.parser multiline parser sequences vocabs.parser words
-words.symbol ;
+USE: cpu.arm.64.assembler.syntax
 IN: cpu.arm.64.assembler.opcodes
 
-! https://developer.arm.com/documentation/ddi0487/latest/
-! https://static.docs.arm.com/ddi0487/fb/DDI0487F_b_armv8_arm.pdf ! initial work
-! https://static.docs.arm.com/ddi0487/fb/DDI0487G_a_armv8_arm.pdf ! 3/13/21
+<PRIVATE
 
-<<
-GENERIC: register ( obj -- n )
-M: word register "ordinal" word-prop ;
-M: integer register ;
-: error-word ( word -- new-class )
-    name>> "-range" append create-class-in dup save-location
-    tuple
-    { "value" }
-    [ define-error-class ] keepdd ;
-
-: make-checker-word ( word n -- )
-    [ drop dup error-word ]
-    [ nip swap '[ dup _ on-bits > [ _ execute( value -- * ) ] when ] ]
-    [ 2drop ( n -- n ) ] 2tri
-    define-declared ;
-
-SYNTAX: FIELD:
-    scan-new-word scan-object
-    [ "width" set-word-prop ] 2keep
-    make-checker-word ;
-
-: make-register-checker-word ( word n -- )
-    [ drop dup error-word '[ _ execute( value -- * ) ] ]
-    [ nip swap '[ register dup _ on-bits > _ when ] ]
-    [ 2drop ( n -- n ) ] 2tri
-    define-declared ;
-
-SYNTAX: REGISTER-FIELD:
-    scan-new-word scan-object
-    [ "width" set-word-prop ] 2keep
-    make-register-checker-word ;
->>
-
-<<
 FIELD: bw 1
 FIELD: !bw 1
 
-FIELD: op1 1
 FIELD: op2 2
 FIELD: op3 3
-FIELD: op4 4
-FIELD: op5 5
-FIELD: op6 6
-FIELD: op7 7
-FIELD: op8 8
-FIELD: op9 9
-FIELD: op10 10
 
-FIELD: opc1 1
 FIELD: opc2 2
 FIELD: opc3 3
-FIELD: opc4 4
 
-FIELD: option1 1
-FIELD: option2 2
 FIELD: option3 3
-FIELD: option4 4
-FIELD: option5 5
 
-FIELD: a1 1
-FIELD: b1 1
-FIELD: c1 1
-FIELD: d1 1
-FIELD: e1 1
-FIELD: f1 1
-FIELD: g1 1
-FIELD: h1 1
-
-FIELD: A 1
-FIELD: D 1
-FIELD: L 1
-FIELD: M 1
-FIELD: N 1
 FIELD: Q 1
 FIELD: S 1
-FIELD: U 1
-FIELD: Z 1
 
-FIELD: sf 1
 FIELD: ftype 2
 FIELD: rmode 2
 
-FIELD: size1 1
 FIELD: size2 2
 
+FIELD: sh 1
 FIELD: shift2 2
 
+FIELD: b5 1
 FIELD: b40 5
 
 FIELD: immr 6
 FIELD: imms 6
-FIELD: immrimms 12
-FIELD: Nimmrimms 13
 FIELD: (N)immrimms 13
 FIELD: imm3 3
-FIELD: imm4 4
 FIELD: imm5 5
 FIELD: imm6 6
 FIELD: imm7 7
 FIELD: imm9 9
 FIELD: imm12 12
-FIELD: imm13 13
 FIELD: imm14 14
 FIELD: imm16 16
 FIELD: imm19 19
@@ -145,87 +72,7 @@ REGISTER-FIELD: Xn 5
 REGISTER-FIELD: Xt 5
 REGISTER-FIELD: Xt2 5
 
-! Stack Pointer EL0 is 64bit, rest are 32bit
-SINGLETONS: SP_EL0 SP_EL1 SP_EL2 SP_EL3 ;
-
-! Exception link registers, 64bit
-SINGLETONS: ELR_EL1 ELR_EL2 ELR_EL3 ;
-
-! Saved program status registers, exception level, 64bit
-SINGLETONS: SPSR_EL1 SPSR_EL2 SPSR_EL3 ;
-
-! Program counter, 64bit
-! SINGLETONS: PC ; ! not accessible (?)
-
-! Flags: N negative, Z zero, C carry, V overflow, SS software step, IL illegal execution
-! D debug, A SError system error, I IRQ normal interrupt, F FIQ fast interrupt
-
-! Distinct L1 I-cache (instruction) and D-cache (data), unified L2 cache
-! 4kb page size alignment, unaligned accepted
-
-! PCS Procedure Call Standard X0-X7 parameters/results registers
-! X9-X15 caller-saved temp regs (use)
-! X19-X29 callee-saved (preserved)
-! X8 indirect result register, syscalls register
-! X16 X17 are IP0 and IP1, intra-procedure temp regs (avoid)
-! X18 platform-register (avoid)
-! X29 FP frame pointer register (avoid)
-! X30 LR link register (avoid)
-
-![[
-(bits(N), bit) LSL_C(bits(N) x, integer shift)
-    assert shift > 0;
-    shift = if shift > N then N else shift;
-    extended_x = x : Zeros(shift);
-    result = extended_x<N-1:0>;
-    carry_out = extended_x<N>;
-    return (result, carry_out);
-]]
-
-! Instructions
-
-ERROR: no-field-word vocab name ;
-
-TUPLE: integer-literal value width ;
-C: <integer-literal> integer-literal
-
-! handle 1xx0 where x = dontcare
-: make-integer-literal ( string -- integer-literal )
-    [ "0b" prepend { { CHAR: x CHAR: 0 } } substitute string>number ]
-    [ length ] bi <integer-literal> ;
-
-: ?lookup-word ( name vocab -- word )
-    2dup lookup-word
-    [ 2nip ]
-    [ over [ "01x" member? ] all? [ drop make-integer-literal ] [ no-field-word ] if ] if* ;
-
-GENERIC: width ( obj -- n )
-M: word width "width" word-prop ;
-M: integer-literal width width>> ;
-
-GENERIC: value ( obj -- n )
-M: integer-literal value value>> ;
-M: object value ;
-
-: arm-bitfield ( seq -- assoc )
-    [ current-vocab name>> ?lookup-word ] map ! looks up the fields associated with the effect labels
-    [ dup width ] map>alist ! creates a list of { field bitwidth } pairs 
-    dup values [ f = ] any? [ throw ] when ; ! if any have no assigned bitwidth, throw.
-
-ERROR: bad-instruction values ;
-
-SYNTAX: ARM-INSTRUCTION:
-    scan-new-word ! scans in the name given
-    scan-effect ! scans in the effect given (effect objects hold input and output sequences)
-    [
-      in>> arm-bitfield ! generates a list of { field bitwidth } pairs from the input
-      [ keys [ value ] map ] ! gets the fields back
-      ! for each field, how many bits are left in the instr after it?
-      [ values 32 [ - ] accumulate* ] bi zip ! then combines into another assoc
-      dup last second 0 = [ bad-instruction ] unless ! and there better be 0 bits left after the last field
-      '[ _ bitfield* 4 >le % ] ! this quot is the actual word effect
-    ] [ in>> [ string>number ] reject { } <effect> ] bi define-declared ;
->>
+PRIVATE>
 
 ! ADC: Add with Carry.
 ! ADCS: Add with Carry, setting flags.
@@ -236,7 +83,7 @@ ARM-INSTRUCTION: ADCS-encode ( bw 0 1 11010000 Rm 000000 Rn Rd -- )
 ARM-INSTRUCTION: ADDer-encode ( bw 0 0 01011 00 1 Rm option3 imm3 Rn Rd -- )
 
 ! ADD (immediate): Add (immediate).
-ARM-INSTRUCTION: ADDi-encode ( bw 0 0 10001 shift2 imm12 Rn Rd -- )
+ARM-INSTRUCTION: ADDi-encode ( bw 0 0 100010 sh imm12 Rn Rd -- )
 
 ! ADD (shifted register): Add (shifted register).
 ARM-INSTRUCTION: ADDsr-encode ( bw 0 0 01011 shift2 0 Rm imm6 Rn Rd -- )
@@ -248,13 +95,10 @@ ARM-INSTRUCTION: ADDG-encode ( 1 0 0 100011 0 uimm6 00 uimm4 Xn Xd -- )
 ARM-INSTRUCTION: ADDSer-encode ( bw 0 1 01011 00 1 Rm option3 imm3 Rn Rd -- )
 
 ! ADDS (immediate): Add (immediate), setting flags.
-ARM-INSTRUCTION: ADDSi-encode ( bw 0 1 10001 shift2 imm12 Rn Rd -- )
+ARM-INSTRUCTION: ADDSi-encode ( bw 0 1 100010 sh imm12 Rn Rd -- )
 
 ! ADDS (shifted register): Add (shifted register), setting flags.
 ARM-INSTRUCTION: ADDSsr-encode ( bw 0 1 01011 shift2 0 Rm imm6 Rn Rd -- )
-
-! ADDV: Add across Vector.
-ARM-INSTRUCTION: ADDV-encode ( 0 Q 0 01110 size2 11000 11011 10 Rn Rd -- )
 
 ! ADR: Form PC-relative address.
 ! ADRP: Form PC-relative address to 4KB page.
@@ -274,7 +118,7 @@ ARM-INSTRUCTION: ANDSi-encode ( bw 11 100100 (N)immrimms Rn Rd -- )
 ARM-INSTRUCTION: ANDSsr-encode ( bw 11 01010 shift2 0 Rm imm6 Rn Rd -- )
 
 ! ASR (immediate): Arithmetic Shift Right (immediate): an alias of SBFM.
-ARM-INSTRUCTION: ASRi-encode ( bw 00 100110 1 immr 111111 Rn Rd -- )
+ARM-INSTRUCTION: ASRi-encode ( bw 00 100110 bw immr bw 11111 Rn Rd -- )
 
 ! ASR (register): Arithmetic Shift Right (register): an alias of ASRV.
 ARM-INSTRUCTION: ASRr-encode ( bw 0 0 11010110 Rm 0010 10 Rn Rd -- )
@@ -332,9 +176,9 @@ ARM-INSTRUCTION: BFM-encode ( bw 01 100110 (N)immrimms Rn Rd -- )
 ARM-INSTRUCTION: BFXIL-encode ( bw 01 100110 (N)immrimms Rn Rd -- )
 
 ! BIC (shifted register): Bitwise Bit Clear (shifted register).
-ARM-INSTRUCTION: BIC-encode ( bw 00 01010 shift2 1 Rm imm6 Rn Rd -- )
+ARM-INSTRUCTION: BICsr-encode ( bw 00 01010 shift2 1 Rm imm6 Rn Rd -- )
 ! BICS (shifted register): Bitwise Bit Clear (shifted register), setting flags.
-ARM-INSTRUCTION: BICS-encode ( bw 11 01010 shift2 1 Rm imm6 Rn Rd -- )
+ARM-INSTRUCTION: BICSsr-encode ( bw 11 01010 shift2 1 Rm imm6 Rn Rd -- )
 
 ! BL: Branch with Link.
 ARM-INSTRUCTION: BL-encode ( 1 00101 imm26 -- )
@@ -408,10 +252,10 @@ ARM-INSTRUCTION: CFINV-encode ( 1101010100 0 0 0 000 0100 0000 000 11111 -- )
 ARM-INSTRUCTION: CFP-encode ( 1101010100 0 01 011 0111 0011 100 Rt -- )
 
 ! CINC: Conditional Increment: an alias of CSINC.
-ARM-INSTRUCTION: CINC-encode ( bw 0 0 11010100 Rm cond4 0 1 Rn Rd -- )
+ARM-INSTRUCTION: CINC-encode ( bw 0 0 11010100 Rn cond4 0 1 Rn Rd -- )
 
 ! CINV: Conditional Invert: an alias of CSINV.
-ARM-INSTRUCTION: CINV-encode ( bw 0 0 11010100 Rm cond4 0 0 Rn Rd -- )
+ARM-INSTRUCTION: CINV-encode ( bw 0 0 11010100 Rn cond4 0 0 Rn Rd -- )
 
 ! CLREX: Clear Exclusive.
 ARM-INSTRUCTION: CLREX-encode ( 1101010100 0 00 011 0011 CRm 010 11111 -- )
@@ -440,10 +284,10 @@ ARM-INSTRUCTION: CMPsr-encode ( bw 1 1 01011 shift2 0 Rm imm6 Rn Rd -- )
 ARM-INSTRUCTION: CMPP-encode ( 1 0 1 11010110 Xm 0 0 0 0 0 0 Xn Xd -- )
 
 ! CNEG: Conditional Negate: an alias of CSNEG.
-ARM-INSTRUCTION: CNEG-encode ( bw 1 0 11010100 Rm cond4 0 1 Rn Rd -- )
+ARM-INSTRUCTION: CNEG-encode ( bw 1 0 11010100 Rn cond4 0 1 Rn Rd -- )
 
 ! CNT: Population Count per byte.
-ARM-INSTRUCTION: CNT-encode ( 0 Q 0 01110 size2 10000 00101 10 Rn Rd -- )
+ARM-INSTRUCTION: CNT-encode ( bw 1 0 11010110 00000 000111 Rn Rd -- )
 
 ! CPP: Cache Prefetch Prediction Restriction by Context: an alias of SYS.
 ARM-INSTRUCTION: CPP-encode ( 1101010100 0 01 011 0111 0011 111 Rt -- )
@@ -497,9 +341,6 @@ ARM-INSTRUCTION: DPRS-encode ( 1101011 0101 11111 000000 11111 00000 -- )
 ! DSB: Data Synchronization Barrier.
 ARM-INSTRUCTION: DSB-encode ( 1101010100 0 00 011 0011 CRm 1 00 11111 -- )
 
-! DUP (general): Duplicate general-purpose register to vector.
-ARM-INSTRUCTION: DUPgen-encode ( 0 Q 0 01110000 imm5 0 0001 1 Rn Rd -- )
-
 ! DVP: Data Value Prediction Restriction by Context: an alias of SYS.
 ARM-INSTRUCTION: DVP-encode ( 1101010100 0 01 011 0111 0011 101 Rt -- )
 
@@ -546,7 +387,7 @@ ARM-INSTRUCTION: FMAXs-encode ( 0 0 0 11110 ftype 1 Rm 01 00 10 Rn Rd -- )
 ARM-INSTRUCTION: FMINs-encode ( 0 0 0 11110 ftype 1 Rm 01 01 10 Rn Rd -- )
 
 ! FMOV (general): Floating-point Move to or from general-purpose register without conversion.
-ARM-INSTRUCTION: FMOVgen-encode ( sf 0 0 11110 ftype 1 rmode opc3 000000 Rn Rd -- )
+ARM-INSTRUCTION: FMOVgen-encode ( bw 0 0 11110 ftype 1 rmode opc3 000000 Rn Rd -- )
 
 ! FMUL (scalar): Floating-point Multiply (scalar).
 ARM-INSTRUCTION: FMULs-encode ( 0 0 0 11110 ftype 1 Rm 0 000 10 Rn Rd -- )
@@ -720,9 +561,7 @@ ARM-INSTRUCTION: LDRBpre-encode ( 00 111 0 00 01 0 imm9 11 Rn Rt -- )
 ARM-INSTRUCTION: LDRBuoff-encode ( 00 111 0 01 01 imm12 Rn Rt -- )
 
 ! LDRB (register): Load Register Byte (register).
-! option: 010: UXTW, 110 SXTW, 111 SXTX, S shift 0/1
-ARM-INSTRUCTION: LDRBer-encode ( 00 111 0 00 01 1 Rm option3 S 10 Rn Rt -- )
-ARM-INSTRUCTION: LDRBsr-encode ( 00 111 0 00 01 1 Rm 011 S 10 Rn Rt -- )
+ARM-INSTRUCTION: LDRBr-encode ( 00 111 0 00 01 1 Rm option3 S 10 Rn Rt -- )
 
 ! LDRH (immediate): Load Register Halfword (immediate).
 ARM-INSTRUCTION: LDRHpost-encode ( 01 111 0 00 01 0 imm9 01 Rn Rt -- )
@@ -738,8 +577,7 @@ ARM-INSTRUCTION: LDRSBpre-encode  ( 00 111 0 00 1 !bw 0 imm9 11 Rn Rt -- )
 ARM-INSTRUCTION: LDRSBuoff-encode ( 00 111 0 01 1 !bw imm12 Rn Rt -- )
 
 ! LDRSB (register): Load Register Signed Byte (register).
-ARM-INSTRUCTION: LDRSBer-encode ( 00 111 0 00 1 !bw 1 Rm option3 S 10 Rn Rt -- )
-ARM-INSTRUCTION: LDRSBsr-encode ( 00 111 0 00 1 !bw 1 Rm 011 S 10 Rn Rt -- )
+ARM-INSTRUCTION: LDRSBr-encode ( 00 111 0 00 1 !bw 1 Rm option3 S 10 Rn Rt -- )
 
 ! LDRSH (immediate): Load Register Signed Halfword (immediate).
 ARM-INSTRUCTION: LDRSHpost-encode ( 01 111 0 00 1 !bw 0 imm9 01 Rn Rt -- )
@@ -940,7 +778,7 @@ ARM-INSTRUCTION: MOViwi-encode ( bw 00 100101 hw2 imm16 Rd -- )
 ARM-INSTRUCTION: MOVr-encode ( bw 01 01010 00 0 Rm 000000 11111 Rd -- )
 
 ! MOV (to/from SP): Move between register and stack pointer: an alias of ADD (immediate).
-ARM-INSTRUCTION: MOVsp-encode ( bw 0 0 10001 shift2 000000000000 Rn Rd -- )
+ARM-INSTRUCTION: MOVsp-encode ( bw 0 0 100010 0 000000000000 Rn Rd -- )
 
 ! MOV (wide immediate): Move (wide immediate): an alias of MOVZ.
 ARM-INSTRUCTION: MOVwi-encode ( bw 10 100101 hw2 imm16 Rd -- )
@@ -971,13 +809,13 @@ ARM-INSTRUCTION: MSUB-encode ( bw 00 11011 000 Rm 1 Ra Rn Rd -- )
 ARM-INSTRUCTION: MUL-encode ( bw 00 11011 000 Rm 0 11111 Rn Rd -- )
 
 ! MVN: Bitwise NOT: an alias of ORN (shifted register).
-ARM-INSTRUCTION: MVN-encode ( bw 0 1 01010 shift2 1 Rm imm6 11111 Rd -- )
+ARM-INSTRUCTION: MVNsr-encode ( bw 0 1 01010 shift2 1 Rm imm6 11111 Rd -- )
 
 ! NEG (shifted register): Negate (shifted register): an alias of SUB (shifted register).
-ARM-INSTRUCTION: NEG-encode ( bw 1 0 01011 shift2 0 Rm imm6 11111 Rd -- )
+ARM-INSTRUCTION: NEGsr-encode ( bw 1 0 01011 shift2 0 Rm imm6 11111 Rd -- )
 
 ! NEGS: Negate, setting flags: an alias of SUBS (shifted register).
-ARM-INSTRUCTION: NEGS-encode ( bw 1 1 01011 shift2 0 Rm imm6 11111 Rd -- )
+ARM-INSTRUCTION: NEGSsr-encode ( bw 1 1 01011 shift2 0 Rm imm6 11111 Rd -- )
 
 ! NGC: Negate with Carry: an alias of SBC.
 ARM-INSTRUCTION: NGC-encode ( bw 1 0 11010000 Rm 000000 11111 Rd -- )
@@ -1076,7 +914,7 @@ ARM-INSTRUCTION: REV64-encode ( 1 1 0 11010110 00000 0000 11 Rn Rd -- )
 ARM-INSTRUCTION: RMIF-encode ( 1 0 1 11010000 imm6 00001 Rn 0 mask4 -- )
 
 ! ROR (immediate): Rotate right (immediate): an alias of EXTR.
-ARM-INSTRUCTION: RORi-encode ( bw 00 100111 0 0 Rm 0 imm5 Rn Rd -- )
+ARM-INSTRUCTION: RORi-encode ( bw 00 100111 bw 0 Rm imms Rn Rd -- )
 
 ! ROR (register): Rotate Right (register): an alias of RORV.
 ARM-INSTRUCTION: RORr-encode ( bw 0 0 11010110 Rm 0010 11 Rn Rd -- )
@@ -1268,8 +1106,7 @@ ARM-INSTRUCTION: STRBpre-encode  ( 00 111 0 00 00 0 imm9 11 Rn Rt -- )
 ARM-INSTRUCTION: STRBuoff-encode ( 00 111 0 01 00 imm12 Rn Rt -- )
 
 ! STRB (register): Store Register Byte (register).
-ARM-INSTRUCTION: STRBer-encode   ( 00 111 0 00 00 1 Rm option3 S 10 Rn Rt -- )
-ARM-INSTRUCTION: STRBsr-encode ( 00 111 0 00 00 1 Rm 011 S 10 Rn Rt -- )
+ARM-INSTRUCTION: STRBr-encode ( 00 111 0 00 00 1 Rm option3 S 10 Rn Rt -- )
 
 ! STRH (immediate): Store Register Halfword (immediate).
 ARM-INSTRUCTION: STRHpost-encode ( 01 111 0 00 00 0 imm9 01 Rn Rt -- )
@@ -1395,7 +1232,7 @@ ARM-INSTRUCTION: STZGsoff-encode ( 11011001 0 1 1 imm9 1 0 Xn 11111 -- )
 ARM-INSTRUCTION: SUBer-encode ( bw 1 0 01011 00 1 Rm option3 imm3 Rn Rd -- )
 
 ! SUB (immediate): Subtract (immediate).
-ARM-INSTRUCTION: SUBi-encode ( bw 1 0 10001 shift2 imm12 Rn Rd -- )
+ARM-INSTRUCTION: SUBi-encode ( bw 1 0 100010 sh imm12 Rn Rd -- )
 
 ! SUB (shifted register): Subtract (shifted register).
 ARM-INSTRUCTION: SUBsr-encode ( bw 1 0 01011 shift2 0 Rm imm6 Rn Rd -- )
@@ -1416,7 +1253,7 @@ ARM-INSTRUCTION: SUBPS-encode ( 1 0 1 11010110 Xm 0 0 0 0 0 0 Xn Xd -- )
 ARM-INSTRUCTION: SUBSer-encode ( bw 1 1 01011 00 1 Rm option3 imm3 Rn Rd -- )
 
 ! SUBS (immediate): Subtract (immediate), setting flags.
-ARM-INSTRUCTION: SUBSimm-encode ( bw 1 1 10001 shift2 imm12 Rn Rd -- )
+ARM-INSTRUCTION: SUBSi-encode ( bw 1 1 100010 sh imm12 Rn Rd -- )
 
 ! SUBS (shifted register): Subtract (shifted register), setting flags.
 ARM-INSTRUCTION: SUBSsr-encode ( bw 1 1 01011 shift2 0 Rm imm6 Rn Rd -- )
@@ -1460,12 +1297,10 @@ ARM-INSTRUCTION: SYS-encode  ( 1101010100 0 01 op3 CRn CRm op3 Rt -- )
 ARM-INSTRUCTION: SYSL-encode ( 1101010100 1 01 op3 CRn CRm op3 Rt -- )
 
 ! TBNZ: Test bit and Branch if Nonzero.
-ARM-INSTRUCTION: TBNZW-encode ( 0 011011 1 b40 imm14 Rt -- )
-ARM-INSTRUCTION: TBNZX-encode ( 1 011011 1 b40 imm14 Rt -- )
+ARM-INSTRUCTION: TBNZ-encode ( b5 011011 1 b40 imm14 Rt -- )
 
 ! TBZ: Test bit and Branch if Zero.
-ARM-INSTRUCTION: TBHZW-encode ( 0 011011 0 b40 imm14 Rt -- )
-ARM-INSTRUCTION: TBHZX-encode ( 1 011011 0 b40 imm14 Rt -- )
+ARM-INSTRUCTION: TBZ-encode ( b5 011011 0 b40 imm14 Rt -- )
 
 ! TLBI: TLB Invalidate operation: an alias of SYS.
 ARM-INSTRUCTION: TLBI-encode ( 1101010100 0 01 op3 1000 CRm op3 Rt -- )
@@ -1481,13 +1316,13 @@ ARM-INSTRUCTION: TSTi-encode ( bw 11 100100 (N)immrimms Rn 11111 -- )
 ARM-INSTRUCTION: TSTsr-encode ( bw 11 01010 shift2 0 Rm imm6 Rn 11111 -- )
 
 ! UBFIZ: Unsigned Bitfield Insert in Zero: an alias of UBFM.
-ARM-INSTRUCTION: UBFIZ-encode ( bw 10 100110 0 immr imms Rn Rd -- )
+ARM-INSTRUCTION: UBFIZ-encode ( bw 10 100110 bw immr imms Rn Rd -- )
 
 ! UBFM: Unsigned Bitfield Move.
-ARM-INSTRUCTION: UBFM-encode ( bw 10 100110 0 immr imms Rn Rd -- )
+ARM-INSTRUCTION: UBFM-encode ( bw 10 100110 bw immr imms Rn Rd -- )
 
 ! UBFX: Unsigned Bitfield Extract: an alias of UBFM.
-ARM-INSTRUCTION: UBFX-encode ( bw 10 100110 0 immr imms Rn Rd -- )
+ARM-INSTRUCTION: UBFX-encode ( bw 10 100110 bw immr imms Rn Rd -- )
 
 ! UDF: Permanently Undefined.
 ARM-INSTRUCTION: UDF-encode ( 0000000000000000 imm16 -- )

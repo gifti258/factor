@@ -8,7 +8,7 @@ namespace factor {
 // written in Factor and performs advanced optimizations. See
 // basis/compiler/compiler.factor.
 
-// The non-optimizing compiler compiles a quotation at a time by
+// The non-optimizing compiler compiles one quotation at a time by
 // concatenating machine code chunks; prolog, epilog, call word, jump to
 // word, etc. These machine code chunks are generated from Factor code in
 // basis/bootstrap/assembler/.
@@ -22,8 +22,8 @@ namespace factor {
 // 1) Tail call optimization.
 
 // 2) If a quotation is determined to not call any other words (except for a
-// few special words which are open-coded, see below), then no prolog/epilog
-// is generated.
+// few special words which are open-coded (inlined), see below), then no
+// prolog/epilog is generated.
 
 // 3) When in tail position and immediately preceded by literal arguments,
 // the 'if' is generated inline, instead of as a call to the 'if' word.
@@ -176,9 +176,8 @@ void quotation_jit::iterate_quotation() {
       case BYTE_ARRAY_TYPE:
         // Primitive calls
         if (primitive_call_p(i, length)) {
-// On x86-64 and PowerPC, the VM pointer is stored in a register;
-// on other platforms, the RT_VM relocation is used and it needs
-// an offset parameter
+// On arm64, x86-64, and PowerPC, the VM pointer is stored in a register;
+// on other platforms, the RT_VM relocation is used and it needs an offset parameter
 #ifdef FACTOR_X86
           parameter(tag_fixnum(0));
 #endif

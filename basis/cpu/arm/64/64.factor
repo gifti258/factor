@@ -15,16 +15,16 @@ IN: cpu.arm.64
 : temp0 ( -- reg ) X9 ; inline
 : pic-tail-reg ( -- reg ) X12 ; inline
 
-: stack-reg ( -- reg ) SP ; inline
-M: arm.64 frame-reg X29 ;
-: vm-reg ( -- reg ) X28 ; inline
 M: arm.64 ds-reg X27 ;
 M: arm.64 rs-reg X26 ;
 
 ! M: arm.64 vm-stack-space 0 ;
 
+! TODO fix shifts
+! bitnot move-immediate?
+! logical-immediate?
 M: arm.64 %load-immediate ( reg val -- )
-    [ XZR MOVr ] [
+    [ XZR MOV ] [
         { 0 1 2 3 } [
             tuck -16 * shift 0xffff bitand
         ] with map>alist [ 0 = ] reject-values
@@ -34,14 +34,19 @@ M: arm.64 %load-immediate ( reg val -- )
     ] if-zero ;
 
 M: arm.64 %load-reference ( reg obj -- )
-    [
-        3 words rot LDRl
-        3 words Br
-        NOP NOP rc-absolute-cell rel-literal
-    ] [ \ f type-number swap MOVwi ] if* ;
+    [ swap LDR= f rc-absolute-cell rel-literal ]
+    [ \ f type-number MOV ] if* ;
 
-M: arm.64 %load-float 2drop ;
-M: arm.64 %load-double 2drop ;
+M: arm.64 %load-float ( reg val -- )
+    [ fp 2 LDRlfp ] dip
+    2 Br
+    4 0 <array> rc-absolute rel-binary-literal ;
+
+M: arm.64 %load-double
+    [ fp 2 LDRlfp ] dip
+    3 Br
+    8 0 <array> rc-absolute-cell rel-binary-literal ;
+
 M: arm.64 %load-vector 3drop ;
 
 M: arm.64 complex-addressing? eh? ; ! x86: t
@@ -58,17 +63,14 @@ M: arm.64 struct-return-on-stack? f ; ! x86.32.not-linux: t
 M: arm.64 test-instruction? t ; ! t
 M: arm.64 value-struct? drop eh? ;
 
-M: arm.64 %add rot ADDr ;
-M: arm.64 %add-imm spin ADDi ;
-M: arm.64 %sub spin SUBr ;
-M: arm.64 %sub-imm spin SUBi ;
-M: arm.64 %mul rot MUL ;
+M: arm.64 %add ADD ;
+M: arm.64 %add-imm ADD ;
+M: arm.64 %sub SUB ;
+M: arm.64 %sub-imm SUB ;
+M: arm.64 %mul MUL ;
+M: arm.64 %mul-imm [ temp0 XZR ] dip ADDi temp0 MUL ;
 
-M: arm.64 %mul-imm
-    XZR X9 ADDi
-    X9 rot MUL ;
-
-M: arm.64 %neg swap NEG ;
+M: arm.64 %neg NEG ;
 
 M: arm.64 %min
     2dup CMPr
@@ -78,34 +80,28 @@ M: arm.64 %max
     2dup CMPr
     rot GT CSEL ;
 
-M: arm.64 %log2
-    over CLZ
-    63 over dup SUBi
-    dup NEG ;
+M: arm.64 %log2 ( dst src -- ) '[ CLZ ] [ dup 64 SUB ] [ dup MVN ] tri ;
 
-M: arm.64 %bit-count
-    D0 XD FMOVgen
-    D0 D0 8B CNT
-    D0 D0 8B ADDV
-    D0 swap DX FMOVgen ;
+M: arm.64 %bit-count CNT ;
 
 M: arm.64 %bit-test
-    [ 2^ swap TSTi ] dip
-    swap dup EQ CSEL ;
+    ! [ 2^ swap TSTi ] dip
+    ! swap dup EQ CSEL ;
+    TBNZ
 
-M: arm.64 %and rot ANDr ;
-M: arm.64 %and-imm spin ANDi ;
-M: arm.64 %not swap MVN ;
-M: arm.64 %or rot ORRr ;
-M: arm.64 %or-imm spin ORRi ;
-M: arm.64 %sar spin ASRr ;
-M: arm.64 %sar-imm spin ASRi ;
-M: arm.64 %shl spin LSLr ;
-M: arm.64 %shl-imm spin LSLi ;
-M: arm.64 %shr spin LSRr ;
-M: arm.64 %shr-imm spin LSRi ;
-M: arm.64 %xor rot EORr ;
-M: arm.64 %xor-imm spin EORi ;
+M: arm.64 %and AND ;
+M: arm.64 %and-imm AND ;
+M: arm.64 %not MVN ;
+M: arm.64 %or ORR ;
+M: arm.64 %or-imm ORR ;
+M: arm.64 %sar ASR ;
+M: arm.64 %sar-imm ASR ;
+M: arm.64 %shl LSL ;
+M: arm.64 %shl-imm LSL ;
+M: arm.64 %shr LSR ;
+M: arm.64 %shr-imm LSR ;
+M: arm.64 %xor EOR ;
+M: arm.64 %xor-imm EOR ;
 
 M: arm.64 %copy ( dst src rep -- )
     2over eq? [ 3drop ] [
@@ -121,23 +117,23 @@ M: arm.64 %copy ( dst src rep -- )
         { cc/o VC }
     } at B.cond ; inline
 
-M: arm.64 %fixnum-add [ rot ADDr ] fixnum-overflow ;
-M: arm.64 %fixnum-sub [ spin SUBr ] fixnum-overflow ;
-M: arm.64 %fixnum-mul [ rot MUL ] fixnum-overflow ;
+M: arm.64 %fixnum-add [ ADD ] fixnum-overflow ;
+M: arm.64 %fixnum-sub [ SUB ] fixnum-overflow ;
+M: arm.64 %fixnum-mul [ MUL ] fixnum-overflow ;
 
-M: arm.64 %add-float rot D FADDs ;
-M: arm.64 %sub-float spin D FSUBs ;
-M: arm.64 %mul-float rot D FMULs ;
-M: arm.64 %div-float spin D FDIVs ;
-M: arm.64 %min-float rot D FMINs ;
-M: arm.64 %max-float rot D FMAXs ;
-M: arm.64 %sqrt swap D FSQRTs ;
+M: arm.64 %add-float FADDs ;
+M: arm.64 %sub-float FSUBs ;
+M: arm.64 %mul-float FMULs ;
+M: arm.64 %div-float FDIVs ;
+M: arm.64 %min-float FMINs ;
+M: arm.64 %max-float FMAXs ;
+M: arm.64 %sqrt FSQRTs ;
 
-M: arm.64 %single>double-float swap S D FCVT ;
-M: arm.64 %double>single-float swap D S FCVT ;
+M: arm.64 %single>double-float FCVT ;
+M: arm.64 %double>single-float FCVT ;
 
-M: arm.64 %integer>float swap D SCVTFsi ;
-M: arm.64 %float>integer swap D FCVTZSsi ;
+M: arm.64 %integer>float SCVTFsi ;
+M: arm.64 %float>integer FCVTZSsi ;
 
 M: arm.64 %zero-vector 2drop ;
 M: arm.64 %fill-vector 2drop ;
@@ -277,12 +273,12 @@ M: arm.64 stack-frame-size
     (stack-frame-size) cell + 16 align ;
 
 M: arm.64 %call
-    -16 stack-reg stack-reg STRpre
+    LR SP -16 [,]! STR
     0 BL rc-relative-arm64-branch rel-word-pic
-    16 stack-reg stack-reg LDRpost ;
+    LR SP 16 [], LDR ;
 
 M: arm.64 %epilogue
-    cell + 16 align [ stack-reg stack-reg ADDr ] unless-zero ;
+    cell + 16 align [ SP dup ADDr ] unless-zero ;
 
 M: arm.64 %jump
     4 pic-tail-reg ADR
@@ -292,9 +288,9 @@ M: arm.64 %jump-label
     0 Br rc-relative-arm64-branch label-fixup ;
 
 M: arm.64 %prologue
-    cell - 16 align [ stack-reg stack-reg SUBr ] unless-zero ;
+    cell - 16 align [ SP dup SUBr ] unless-zero ;
 
-M: arm.64 %return f RET ;
+M: arm.64 %return RET ;
 
 M: arm.64 %safepoint
     3 words temp0 LDRl
@@ -328,7 +324,7 @@ M: arm.64 %check-nursery-branch 5drop ;
 M: arm.64 %clear drop ;
 M: arm.64 %peek 2drop ;
 M: arm.64 %replace 2drop ;
-M: arm.64 %replace-imm 2drop ;
+M: arm.64 %replace-imm 2drop ; ! imm SP 0 [,] STRuoff
 M: arm.64 %inc drop ;
 
 M: arm.64 machine-registers {
@@ -366,14 +362,10 @@ M: arm.64 %spill 3drop ;
 M: arm.64 %reload 3drop ;
 M: arm.64 gc-root-offset ;
 
-M: arm.64 immediate-arithmetic?
-    -2147483648 2147483647 between? ;
-
-M: arm.64 immediate-bitwise?
-    [ encode-bitmask drop t ] [ 2drop f ] recover ;
-
-M: arm.64 immediate-comparand? drop eh? ;
-M: arm.64 immediate-store? drop eh? ;
+M: arm.64 immediate-arithmetic? arithmetic-immediate? ;
+M: arm.64 immediate-bitwise? logical-immediate? ;
+M: arm.64 immediate-comparand? drop eh? ; ! %compare-imm
+M: arm.64 immediate-store? drop eh? ; ! %replace-imm
 
 M: arm.64 %unbox 4drop ;
 M: arm.64 %unbox-long-long 4drop ;

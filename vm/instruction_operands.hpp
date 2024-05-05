@@ -54,7 +54,7 @@ enum relocation_class {
   RC_RELATIVE_ARM_3,
   // pointer to address in an ARM32 LDR/STR instruction
   RC_INDIRECT_ARM,
-  // pointer to address in an ARM32 LDR/STR instruction offset by 8 bytes
+  // pointer to address in an ARM32 LDR/STR instruction, offset by 8 bytes
   RC_INDIRECT_ARM_PC,
   // absolute address in a 2 byte location
   RC_ABSOLUTE_2,
@@ -70,6 +70,10 @@ enum relocation_class {
   RC_ABSOLUTE_ARM64_MOVZ,
   // relative address in a pointer-width location
   RC_RELATIVE_CELL,
+  // absolute address stored, divided by eight, in bits 21:5 of an ARM64 instruction
+  RC_ABSOLUTE_ARM64_LDR,
+  // absolute address stored in bits 21:5 of an ARM64 instruction
+  RC_ABSOLUTE_ARM64_CMP,
 };
 
 static const cell rel_absolute_ppc_2_mask = 0x0000ffff;
@@ -80,6 +84,7 @@ static const cell rel_relative_arm_3_mask = 0x00ffffff;
 static const cell rel_relative_arm64_branch_mask = 0x03ffffff;
 static const cell rel_relative_arm64_bcond_mask = 0x00ffffe0;
 static const cell rel_absolute_arm64_movz_mask = 0x001fffe0;
+static const cell rel_absolute_arm64_ldr_mask = 0x003ffc00;
 
 // code relocation table consists of a table of entries for each fixup
 struct relocation_entry {
