@@ -78,6 +78,10 @@ fixnum instruction_operand::load_value(cell relative_to) {
       return load_value_masked(rel_absolute_arm64_movz_mask, 5, 16, 0);
     case RC_RELATIVE_CELL:
       return *(cell*)(pointer - sizeof(cell));
+    case RC_ABSOLUTE_ARM64_LDR:
+      return load_value_masked(rel_absolute_arm64_ldr_mask, 7, 17, 0);
+    case RC_ABSOLUTE_ARM64_CMP:
+      return load_value_masked(rel_absolute_arm64_ldr_mask, 10, 20, 0);
     default:
       critical_error("Bad rel class", rel.klass());
       return 0;
@@ -169,6 +173,11 @@ void instruction_operand::store_value(fixnum absolute_value) {
     case RC_RELATIVE_CELL:
       *(cell*)(pointer - sizeof(cell)) = relative_value;
       break;
+    case RC_ABSOLUTE_ARM64_LDR:
+      store_value_masked(absolute_value, rel_absolute_arm64_ldr_mask, 3, 10);
+      break;
+    case RC_ABSOLUTE_ARM64_CMP:
+      store_value_masked(absolute_value, rel_absolute_arm64_ldr_mask, 0, 10);
     default:
       critical_error("Bad rel class", rel.klass());
       break;

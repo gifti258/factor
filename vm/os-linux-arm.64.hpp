@@ -7,8 +7,6 @@ namespace factor {
 #define CALLSTACK_BOTTOM(ctx) \
   (ctx->callstack_seg->end - sizeof(cell) * 6)
 
-static const fixnum xt_tail_pic_offset = 4 + 1;
-
 #define UAP_STACK_POINTER(ucontext) \
   (((ucontext_t*)ucontext)->uc_mcontext.sp)
 #define UAP_PROGRAM_COUNTER(ucontext) \
@@ -70,7 +68,7 @@ static const unsigned JIT_FRAME_SIZE = 64;
 
 // last byte of X9 BR in absolute-call
 static const unsigned char call_opcode = 0x14;
-// last byte of 12 Br in absolute-jump
+// last byte of 3 Br in absolute-jump
 static const unsigned char jmp_opcode = 0xd6;
 
 static const unsigned SIGNAL_HANDLER_STACK_FRAME_SIZE = 288;

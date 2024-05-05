@@ -80,8 +80,7 @@ IN: bootstrap.assembler.x86
     jit-restore-context
 ] JIT-PRIMITIVE jit-define
 
-: jit-jump-quot ( -- )
-    arg1 quot-entry-point-offset [+] JMP ;
+: jit-jump-quot ( -- ) arg1 quot-entry-point-offset [+] JMP ;
 
 : jit-call-quot ( -- ) arg1 quot-entry-point-offset [+] CALL ;
 
@@ -113,13 +112,13 @@ IN: bootstrap.assembler.x86
 
 ! Inline cache miss entry points
 : jit-load-return-address ( -- )
-    RBX RSP stack-frame-size bootstrap-cell - [+] MOV ;
+    pic-tail-reg RSP stack-frame-size bootstrap-cell - [+] MOV ;
 
 ! These are always in tail position with an existing stack
 ! frame, and the stack. The frame setup takes this into account.
 : jit-inline-cache-miss ( -- )
     jit-save-context
-    arg1 RBX MOV
+    arg1 pic-tail-reg MOV
     arg2 vm-reg MOV
     RAX 0 MOV rc-absolute-cell rel-inline-cache-miss
     RAX CALL

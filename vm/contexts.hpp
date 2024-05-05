@@ -1,9 +1,3 @@
-#ifdef FACTOR_ARM64
-#define ARM64_ALIGN alignas(16)
-#else
-#define ARM64_ALIGN
-#endif
-
 namespace factor {
 
 // Context object count and identifiers must be kept in sync with:
@@ -17,7 +11,7 @@ enum context_object {
   OBJ_IN_CALLBACK_P,
 };
 
-// When the callstack fills up (e.g by to deep recursion), a callstack
+// When the callstack fills up (e.g by too deep recursion), a callstack
 // overflow error is triggered. So before continuing executing on it
 // in general_error(), we chop off this many bytes to have some space
 // to work with. Mac OSX 64 bit needs more than 8192. See issue #1419.
@@ -29,7 +23,8 @@ struct context {
 
   // Factor callstack pointers
   cell callstack_top;
-  ARM64_ALIGN cell callstack_bottom;
+  //ARM64_ALIGN
+  cell callstack_bottom;
 
   // current datastack top pointer
   cell datastack;
