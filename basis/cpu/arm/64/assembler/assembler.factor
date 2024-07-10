@@ -393,8 +393,7 @@ M: immediate-offset STP (LDP) STPsoff-encode ;
 
 ! Branch instructions
 
-! B but that is breakpoint
-: Br ( simm26 -- ) 26 ?simm B-encode ;
+: B ( simm26 -- ) 26 ?simm B-encode ;
 
 <PRIVATE
 
@@ -459,7 +458,7 @@ PRIVATE>
 ! Provide literal through relocation
 : LDR= ( Rt -- )
     [ 2 LDR ] [ >bw
-        [ 2 + Br ]
+        [ 2 + B ]
         [ 1 + 4 * 0 <array> % ] bi
     ] bi ;
 

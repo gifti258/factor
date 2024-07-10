@@ -256,33 +256,33 @@ big-endian off
 ! ! ! Megamorphic caches
 
 [
-    ! class = ...
     temp0 temp1 MOV
+    ! object = <provided by PIC-LOAD>
     temp1/32 tag-mask get AND
     temp1/32 tag-bits get SHL
     temp1/32 tuple type-number tag-fixnum CMP
     [ JNE ]
     [ temp1 temp0 tuple-class-offset [+] MOV ]
     jit-conditional
-    ! cache = ...
+    ! cache = <relocation magic>
     temp0 0 MOV f rc-absolute-cell rel-literal
-    ! key = hashcode(class)
+    ! key = hashcode(object)
     temp2 temp1 MOV
     bootstrap-cell 4 = [ temp2 1 SHR ] when
     ! key &= cache.length - 1
-    temp2 mega-cache-size get 1 - bootstrap-cell * AND
+    temp2 mega-cache-size get 1 - bootstrap-cells AND
     ! cache += array-start-offset
     temp0 array-start-offset ADD
     ! cache += key
     temp0 temp2 ADD
-    ! if(get(cache) == class)
+    ! *cache == class
     temp0 [] temp1 CMP
     [ JNE ]
     [
         ! megamorphic_cache_hits++
         temp1 0 MOV rc-absolute-cell rel-megamorphic-cache-hits
         temp1 [] 1 ADD
-        ! goto get(cache + bootstrap-cell)
+        ! goto cache[bootstrap-cell] + word-entry-point-offset
         temp0 temp0 bootstrap-cell [+] MOV
         temp0 word-entry-point-offset [+] JMP
         ! fall-through on miss

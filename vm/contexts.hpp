@@ -23,7 +23,6 @@ struct context {
 
   // Factor callstack pointers
   cell callstack_top;
-  //ARM64_ALIGN
   cell callstack_bottom;
 
   // current datastack top pointer

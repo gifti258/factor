@@ -8,8 +8,8 @@ namespace factor {
 // static const fixnum xt_tail_pic_offset = 4 + 1; // or 4 or whatever else...
 
 // omg
-inline static unsigned char call_site_opcode(cell return_address) {
-  return *(unsigned char*)(return_address - 4);
+inline static unsigned int call_site_opcode(cell return_address) {
+  return *(unsigned int*)(return_address - 4);
 }
 
 // omg

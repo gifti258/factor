@@ -54,6 +54,9 @@ load-help? off
             1 (exit)
         ] if
     ] %
-] [ ] make
+] [ ] make drop
+USE: math.private
+! [ 1 [| x | x 2 fixnum+fast ] call ]
+[ 1 1 [ fixnum+fast ] (call) ]
 OBJ-STARTUP-QUOT
 bootstrap.image.private:special-objects get set-at

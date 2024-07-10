@@ -299,7 +299,7 @@ IN: bootstrap.assembler.x86
         RSP 2 SUB
         RSP [] FNSTCW
         FNINIT
-        AX RSP [] MOV
+        return-reg 16-bit-version-of RSP [] MOV
         RSP 2 ADD
     ] }
     { set-fpu-state [
