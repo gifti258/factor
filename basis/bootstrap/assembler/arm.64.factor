@@ -41,7 +41,6 @@ big-endian off
 : temp1 ( -- reg ) X10 ; inline
 : temp2 ( -- reg ) X11 ; inline
 : temp3 ( -- reg ) X12 ; inline
-: pic-tail-reg ( -- reg ) X12 ; inline
 
 : stack-reg ( -- reg ) SP ; inline
 : link-reg ( -- reg ) X30 ; inline ! LR
@@ -50,6 +49,7 @@ big-endian off
 : ds-reg ( -- reg ) X27 ; inline
 : rs-reg ( -- reg ) X26 ; inline
 : ctx-reg ( -- reg ) X25 ; inline
+: pic-tail-reg ( -- reg ) X24 ; inline
 
 : push-link-reg ( -- ) -16 stack-reg link-reg STRpre ;
 : pop-link-reg ( -- ) 16 stack-reg link-reg LDRpost ;
@@ -119,9 +119,7 @@ big-endian off
 ! This is used when a word is called at the end of a quotation.
 ! JIT-WORD-CALL is used for other word calls.
 [
-    ! why do we store the address after JMP in EBX, where is it
-    ! picked up?
-    4 pic-tail-reg ADR
+    5 words pic-tail-reg ADR
     absolute-jump rel-word-pic-tail
 ] JIT-WORD-JUMP jit-define
 
@@ -236,6 +234,7 @@ big-endian off
 : jit-inline-cache-miss ( -- )
     jit-save-context
     ! arg1 RBX MOV
+    pic-tail-reg arg1 MOVr
     ! arg2 vm-reg MOV
     vm-reg arg2 MOVr
     ! RAX 0 MOV rc-absolute-cell rel-inline-cache-miss
@@ -247,21 +246,21 @@ big-endian off
 [ jit-load-return-address jit-inline-cache-miss ] [
     ! RAX CALL
     push-link-reg
-    temp0 BLR
+    arg1 BLR
     pop-link-reg
 ] [
     ! RAX JMP
-    temp0 BR
+    arg1 BR
 ] \ inline-cache-miss define-combinator-primitive
 
 [ jit-inline-cache-miss ] [
     ! RAX CALL
     push-link-reg
-    temp0 BLR
+    arg1 BLR
     pop-link-reg
 ] [
     ! RAX JMP
-    temp0 BR
+    arg1 BR
 ] \ inline-cache-miss-tail define-combinator-primitive
 
 ! Contexts
@@ -772,12 +771,12 @@ big-endian off
     ! this contains some C++ setup/teardown,
     ! as well as the actual call into the boot quote.
     { c-to-factor [
-            arg1 arg2 MOVr
-            vm-reg "begin_callback" jit-call-1arg
+        arg1 arg2 MOVr
+        vm-reg "begin_callback" jit-call-1arg
 
-            jit-call-quot
+        jit-call-quot
 
-            vm-reg "end_callback" jit-call-1arg
+        vm-reg "end_callback" jit-call-1arg
     ] }
     { unwind-native-frames [
         ! ! unwind-native-frames is marked as "special" in
