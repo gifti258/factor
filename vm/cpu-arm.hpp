@@ -1,19 +1,19 @@
 namespace factor {
 
-#define CALLSTACK_BOTTOM(ctx) (ctx->callstack_seg->end - sizeof(cell) * 6) // omg
+#define CALLSTACK_BOTTOM(ctx) (ctx->callstack_seg->end - sizeof(cell) * 6)
 
 // void c_to_factor(cell quot);
 // void lazy_jit_compile(cell quot);
 
-// static const fixnum xt_tail_pic_offset = 4 + 1; // or 4 or whatever else...
+// 3 B of LDR=BLR
+static const unsigned int call_opcode = 0x14000003;
+// X9 BR of LDR=BR
+static const unsigned int jmp_opcode = 0xd61f0120;
 
-
-// omg
-inline static unsigned char call_site_opcode(cell return_address) {
-  return *(unsigned char*)(return_address - 5);
+inline static unsigned int call_site_opcode(cell return_address) {
+  return *(unsigned int*)(return_address - 12);
 }
 
-// omg
 inline static void check_call_site(cell return_address) {
   unsigned char opcode = call_site_opcode(return_address);
   FACTOR_ASSERT(opcode == call_opcode || opcode == jmp_opcode);
