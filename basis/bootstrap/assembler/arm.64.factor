@@ -605,9 +605,9 @@ big-endian off
     tuple type-number temp1 CMPi
     ! [ JNE ]
     ! [ temp1 temp0 tuple-class-offset [+] MOV ]
-    [ 4 + NE B.cond ] [
+    [ NE B.cond ] [
         tuple-class-offset temp0 temp1 LDUR
-    ] jit-conditional
+    ] jit-conditional*
 ] PIC-TUPLE jit-define
 
 [
@@ -648,9 +648,9 @@ big-endian off
     tuple type-number tag-fixnum temp1 CMPi
     ! [ JNE ]
     ! [ temp1 temp0 tuple-class-offset [+] MOV ]
-    [ 4 + NE B.cond ] [
+    [ NE B.cond ] [
         tuple-class-offset temp0 temp1 LDUR
-    ] jit-conditional
+    ] jit-conditional*
     ! ! cache = ...
     ! temp0 0 MOV f rc-absolute-cell rel-literal
     2 words temp0 LDRl
@@ -673,7 +673,7 @@ big-endian off
     0 temp0 temp2 LDRuoff
     temp1 temp2 CMPr
     ! [ JNE ]
-    [ 4 + NE B.cond ] [
+    [ NE B.cond ] [
         ! ! megamorphic_cache_hits++
         ! temp1 0 MOV rc-absolute-cell rel-megamorphic-cache-hits
         2 words temp1 LDRl
@@ -689,7 +689,7 @@ big-endian off
         word-entry-point-offset temp0 temp0 LDUR
         temp0 BR
         ! ! fall-through on miss
-    ] jit-conditional
+    ] jit-conditional*
 ] MEGA-LOOKUP jit-define
 
 ! helper for comparison operations which return a boolean value
@@ -717,10 +717,10 @@ big-endian off
     jit-save-context
     [ [ arg2 arg1 temp0 ] dip call ] dip
     store0
-    [ 4 + VC B.cond ] [
+    [ VC B.cond ] [
         vm-reg arg3 MOVr
         jit-call
-    ] jit-conditional ; inline
+    ] jit-conditional* ; inline
 
 ! non-overflowing fixnum (integer) arithmetic
 : jit-math ( insn -- )
@@ -802,11 +802,11 @@ big-endian off
         arg2 arg1 temp1 SMULH
         63 temp0 temp0 ASRi
         temp0 temp1 CMPr
-        [ 4 + EQ B.cond ] [
+        [ EQ B.cond ] [
             arg2 untag
             vm-reg arg3 MOVr
             "overflow_fixnum_multiply" jit-call
-        ] jit-conditional
+        ] jit-conditional*
     ] }
 
     ! ## Misc
