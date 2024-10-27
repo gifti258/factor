@@ -81,43 +81,15 @@ big-endian off
 : store1/0 ( -- ) -8 ds-reg temp0 temp1 STPsoff ;
 : store1/2 ( -- ) -16 ds-reg temp2 temp1 STPsoff ;
 
-! add tag bits to integers
 :: tag* ( reg -- ) tag-bits get reg reg LSLi ;
-! remove tag bits
 :: untag ( reg -- ) tag-bits get reg reg ASRi ;
 
 : tagged>offset0 ( -- ) 1 temp0 temp0 ASRi ;
 
-: >r ( -- ) pop0 pushr ;
-
-: r> ( -- ) popr push0 ;
-
-: absolute-jump ( -- word class )
-    2 words temp0 LDRl
-    temp0 BR
-    NOP NOP f rc-absolute-cell ; inline
-
-: absolute-call ( -- word class )
-    3 words temp0 LDRl
-    temp0 BLR
-    3 words Br
-    NOP NOP f rc-absolute-cell ; inline
-
 [
-    5 words return-address ADR
-    absolute-jump rel-word-pic-tail
-] JIT-WORD-JUMP jit-define
-
-[
-    absolute-call rel-word-pic
-] JIT-WORD-CALL jit-define
-
-: jit-call ( name -- )
-    absolute-call rel-dlsym ;
-
-:: jit-call-1arg ( arg1s name -- )
-    arg1s arg1 MOVr
-    name jit-call ;
+    stack-frame-size neg stack-reg link-reg stack-frame-reg STPpre
+    stack-reg stack-frame-reg MOVsp
+] JIT-PROLOG jit-define
 
 : jit-load-context ( -- )
     vm-context-offset vm-reg ctx-reg LDRuoff ;
@@ -137,6 +109,15 @@ big-endian off
     context-datastack-offset ctx-reg ds-reg LDRuoff
     context-retainstack-offset ctx-reg rs-reg LDRuoff ;
 
+: absolute-call ( -- word class )
+    3 words temp0 LDRl
+    temp0 BLR
+    3 words Br
+    NOP NOP f rc-absolute-cell ; inline
+
+: jit-call ( name -- )
+    absolute-call rel-dlsym ;
+
 [
     jit-save-context
     vm-reg arg1 MOVr
@@ -144,18 +125,116 @@ big-endian off
     jit-restore-context
 ] JIT-PRIMITIVE jit-define
 
-: jit-jump-quot ( -- )
-    quot-entry-point-offset arg1 temp0 LDUR
-    temp0 BR ;
+: absolute-jump ( -- word class )
+    2 words temp0 LDRl
+    temp0 BR
+    NOP NOP f rc-absolute-cell ; inline
+
+[
+    5 words return-address ADR
+    absolute-jump rel-word-pic-tail
+] JIT-WORD-JUMP jit-define
+
+[
+    absolute-call rel-word-pic
+] JIT-WORD-CALL jit-define
+
+[
+    ! pop boolean
+    pop0
+    ! compare boolean with f
+    \ f type-number temp0 CMPi
+    ! skip over true branch if equal
+    5 words EQ B.cond
+    ! jump to true branch
+    absolute-jump rel-word
+    ! jump to false branch
+    absolute-jump rel-word
+] JIT-IF jit-define
+
+[
+    3 words temp0 LDRl
+    0 temp0 W0 STRuoff
+    3 words Br
+    NOP NOP rc-absolute-cell rel-safepoint
+] JIT-SAFEPOINT jit-define
+
+[
+    stack-frame-size stack-reg link-reg stack-frame-reg LDPpost
+] JIT-EPILOG jit-define
+
+[ f RET ] JIT-RETURN jit-define
+
+[
+    ! load literal
+    2 words temp0 LDRl
+    3 words Br
+    NOP NOP f rc-absolute-cell rel-literal
+    ! store literal on datastack
+    push0
+] JIT-PUSH-LITERAL jit-define
+
+: >r ( -- ) pop0 pushr ;
+: r> ( -- ) popr push0 ;
+
+[
+    >r
+    absolute-call rel-word
+    r>
+] JIT-DIP jit-define
+
+[
+    >r >r
+    absolute-call rel-word
+    r> r>
+] JIT-2DIP jit-define
+
+[
+    >r >r >r
+    absolute-call rel-word
+    r> r> r>
+] JIT-3DIP jit-define
 
 : jit-call-quot ( -- )
     quot-entry-point-offset arg1 temp0 LDUR
     temp0 BLR ;
 
+: jit-jump-quot ( -- )
+    quot-entry-point-offset arg1 temp0 LDUR
+    temp0 BR ;
+
 [ pop-arg1 ]
 [ jit-call-quot ]
 [ jit-jump-quot ]
 \ (call) define-combinator-primitive
+
+[
+    pop0
+    word-entry-point-offset temp0 temp0 LDUR
+]
+[ temp0 BLR ]
+[ temp0 BR ]
+\ (execute) define-combinator-primitive
+
+[
+    pop0
+    word-entry-point-offset temp0 temp0 LDUR
+    temp0 BR
+] JIT-EXECUTE jit-define
+
+:: jit-call-1arg ( arg1s name -- )
+    arg1s arg1 MOVr
+    name jit-call ;
+
+[
+    arg1 arg2 MOVr
+    vm-reg "begin_callback" jit-call-1arg
+
+    ! call the quotation
+    jit-call-quot
+
+    vm-reg "end_callback" jit-call-1arg
+] \ c-to-factor define-sub-primitive
 
 [
     jit-save-context
@@ -166,119 +245,105 @@ big-endian off
 [ jit-jump-quot ]
 \ lazy-jit-compile define-combinator-primitive
 
-[
-    3 words temp2 LDRl
-    temp2 temp1 CMPr
-    3 words Br
-    NOP NOP f rc-absolute-cell rel-literal
-] PIC-CHECK-TUPLE jit-define
+{
+    { unwind-native-frames [
+        ! unwind-native-frames is marked as "special" in
+        ! vm/quotations.cpp so it does not have a standard prolog
+        ! Unwind stack frames
+        arg2 stack-reg MOVsp
 
+        ! Load VM pointer into vm-reg, since we're entering from
+        ! C code
+        2 words vm-reg LDRl
+        3 words Br
+        NOP NOP 0 rc-absolute-cell rel-vm
 
-! Inline cache miss entry points
-: jit-load-return-address ( -- )
-    8 stack-reg return-address LDRuoff
-    3 words return-address return-address ADDi ;
+        ! Load ds and rs registers
+        jit-load-context
+        jit-restore-context
 
-! These are always in tail position with an existing stack
-! frame, and the stack. The frame setup takes this into account.
-: jit-inline-cache-miss ( -- )
-    jit-save-context
-    return-address arg1 MOVr
-    vm-reg arg2 MOVr
-    absolute-call nip rel-inline-cache-miss
-    jit-load-context
-    jit-restore-context ;
+        ! Clear the fault flag
+        vm-fault-flag-offset vm-reg XZR STRuoff
 
-[ jit-load-return-address jit-inline-cache-miss ]
-[ arg1 BLR ]
-[ arg1 BR ]
-\ inline-cache-miss define-combinator-primitive
+        ! Call quotation
+        jit-jump-quot
+    ] }
 
-[ jit-inline-cache-miss ]
-[ arg1 BLR ]
-[ arg1 BR ]
-\ inline-cache-miss-tail define-combinator-primitive
+    { fpu-state [ FPSR XZR MSRr ] }
+    { set-fpu-state [ ] }
+} define-sub-primitives
 
-! Contexts
-: jit-switch-context ( reg -- )
-    ! Push a bogus return address so the GC can track this frame back
-    ! to the owner
-    ! 0 words temp0 ADR
-    ! -16 stack-reg temp0 stack-frame-reg STPpre
+! The *-signal-handler subprimitives are special-cased in vm/quotations.cpp
+! not to trigger generation of a stack frame, so they can
+! perform their own prolog/epilog preserving registers.
+!
+! It is important that the total is 288 and that it matches the
+! constant in vm/cpu-arm.64.hpp
+: jit-signal-handler-prolog ( -- )
+    ! Push all registers and flags -> 256 bytes.
+    -16 SP X1 X0 STPpre
+    -16 SP X3 X2 STPpre
+    -16 SP X5 X4 STPpre
+    -16 SP X7 X6 STPpre
+    -16 SP X9 X8 STPpre
+    -16 SP X11 X10 STPpre
+    -16 SP X13 X12 STPpre
+    -16 SP X15 X14 STPpre
+    -16 SP X17 X16 STPpre
+    -16 SP X19 X18 STPpre
+    -16 SP X21 X20 STPpre
+    -16 SP X23 X22 STPpre
+    -16 SP X25 X24 STPpre
+    -16 SP X27 X26 STPpre
+    -16 SP X29 X28 STPpre
+    NZCV X0 MRS
+    -16 SP X0 X30 STPpre
 
-    ! Make the new context the current one
-    ctx-reg MOVr
-    vm-context-offset vm-reg ctx-reg STRuoff
+    ! Register parameter area 32 bytes, unused on platforms other than
+    ! windows 64 bit, but including it doesn't hurt -> 288 bytes.
+    4 bootstrap-cells stack-reg stack-reg SUBi ;
 
-    ! Load new stack pointer
-    context-callstack-top-offset ctx-reg temp0 LDRuoff
-    temp0 stack-reg MOVsp
+: jit-signal-handler-epilog ( -- )
+    4 bootstrap-cells stack-reg stack-reg ADDi
+    16 SP X0 X30 LDPpost
+    NZCV X0 MSRr
+    16 SP X29 X28 LDPpost
+    16 SP X27 X26 LDPpost
+    16 SP X25 X24 LDPpost
+    16 SP X23 X22 LDPpost
+    16 SP X21 X20 LDPpost
+    16 SP X19 X18 LDPpost
+    16 SP X17 X16 LDPpost
+    16 SP X15 X14 LDPpost
+    16 SP X13 X12 LDPpost
+    16 SP X11 X10 LDPpost
+    16 SP X9 X8 LDPpost
+    16 SP X7 X6 LDPpost
+    16 SP X5 X4 LDPpost
+    16 SP X3 X2 LDPpost
+    16 SP X1 X0 LDPpost ;
 
-    ! Load new ds, rs registers
-    jit-restore-context
-
-    ctx-reg jit-update-tib ;
-
-: jit-pop-context-and-param ( -- )
-    pop-arg1
-    alien-offset arg1 arg1 LDUR
-    pop-arg2 ;
-
-: jit-push-param ( -- )
-    push-arg2 ;
-
-: jit-set-context ( -- )
-    jit-pop-context-and-param
-    jit-save-context
-    arg1 jit-switch-context
-    ! 16 stack-reg stack-reg ADDi
-    jit-push-param ;
-
-: jit-pop-quot-and-param ( -- )
-    pop1 pop-arg2 ;
-
-: jit-start-context ( -- )
-    ! Create the new context in return-reg. Have to save context
-    ! twice, first before calling new_context() which may GC,
-    ! and again after popping the two parameters from the stack.
-    jit-save-context
-    vm-reg "new_context" jit-call-1arg
-
-    jit-pop-quot-and-param
-    jit-save-context
-    return-reg jit-switch-context
-    jit-push-param
-    temp1 arg1 MOVr
-    jit-jump-quot ;
-
-: jit-delete-current-context ( -- )
-    vm-reg "delete_context" jit-call-1arg ;
-
-! Resets the active context and instead the passed in quotation
-! becomes the new code that it executes.
-: jit-start-context-and-delete ( -- )
-    ! Updates the context to match the values in the data and retain
-    ! stack registers. reset_context can GC.
-    jit-save-context
-
-    ! Resets the context. The top two ds items are preserved.
-    vm-reg "reset_context" jit-call-1arg
-
-    ! Switches to the same context I think.
-    ctx-reg jit-switch-context
-
-    ! Pops the quotation from the stack and puts it in arg1.
-    pop-arg1
-
-    ! Jump to quotation arg1
-    jit-jump-quot ;
-
-[
-    3 words temp0 LDRl
-    0 temp0 W0 STRuoff
-    3 words Br
-    NOP NOP rc-absolute-cell rel-safepoint
-] JIT-SAFEPOINT jit-define
+{
+    { signal-handler [
+        jit-signal-handler-prolog
+        jit-save-context
+        vm-signal-handler-addr-offset vm-reg temp0 LDRuoff
+        temp0 BLR
+        jit-signal-handler-epilog
+        pop-link-reg
+        f RET
+    ] }
+    { leaf-signal-handler [
+        jit-signal-handler-prolog
+        jit-save-context
+        vm-signal-handler-addr-offset vm-reg temp0 LDRuoff
+        temp0 BLR
+        jit-signal-handler-epilog
+        ! Pop the fake leaf frame along with our return address
+        leaf-stack-frame-size stack-reg link-reg stack-frame-reg LDPpost
+        f RET
+    ] }
+} define-sub-primitives
 
 ! C to Factor entry point
 [
@@ -351,124 +416,7 @@ big-endian off
     f RET
 ] CALLBACK-STUB jit-define
 
-[
-    ! load literal
-    2 words temp0 LDRl
-    3 words Br
-    NOP NOP f rc-absolute-cell rel-literal
-    ! store literal on datastack
-    push0
-] JIT-PUSH-LITERAL jit-define
-
-! The *-signal-handler subprimitives are special-cased in vm/quotations.cpp
-! not to trigger generation of a stack frame, so they can
-! perform their own prolog/epilog preserving registers.
-!
-! It is important that the total is 288 and that it matches the
-! constant in vm/cpu-arm.64.hpp
-: jit-signal-handler-prolog ( -- )
-    ! Push all registers and flags -> 256 bytes.
-    -16 SP X1 X0 STPpre
-    -16 SP X3 X2 STPpre
-    -16 SP X5 X4 STPpre
-    -16 SP X7 X6 STPpre
-    -16 SP X9 X8 STPpre
-    -16 SP X11 X10 STPpre
-    -16 SP X13 X12 STPpre
-    -16 SP X15 X14 STPpre
-    -16 SP X17 X16 STPpre
-    -16 SP X19 X18 STPpre
-    -16 SP X21 X20 STPpre
-    -16 SP X23 X22 STPpre
-    -16 SP X25 X24 STPpre
-    -16 SP X27 X26 STPpre
-    -16 SP X29 X28 STPpre
-    NZCV X0 MRS
-    -16 SP X0 X30 STPpre
-
-    ! Register parameter area 32 bytes, unused on platforms other than
-    ! windows 64 bit, but including it doesn't hurt -> 288 bytes.
-    4 bootstrap-cells stack-reg stack-reg SUBi ;
-
-: jit-signal-handler-epilog ( -- )
-    4 bootstrap-cells stack-reg stack-reg ADDi
-    16 SP X0 X30 LDPpost
-    NZCV X0 MSRr
-    16 SP X29 X28 LDPpost
-    16 SP X27 X26 LDPpost
-    16 SP X25 X24 LDPpost
-    16 SP X23 X22 LDPpost
-    16 SP X21 X20 LDPpost
-    16 SP X19 X18 LDPpost
-    16 SP X17 X16 LDPpost
-    16 SP X15 X14 LDPpost
-    16 SP X13 X12 LDPpost
-    16 SP X11 X10 LDPpost
-    16 SP X9 X8 LDPpost
-    16 SP X7 X6 LDPpost
-    16 SP X5 X4 LDPpost
-    16 SP X3 X2 LDPpost
-    16 SP X1 X0 LDPpost ;
-
-[
-    ! pop boolean
-    pop0
-    ! compare boolean with f
-    \ f type-number temp0 CMPi
-    ! skip over true branch if equal
-    5 words EQ B.cond
-    ! jump to true branch
-    absolute-jump rel-word
-    ! jump to false branch
-    absolute-jump rel-word
-] JIT-IF jit-define
-
-[
-    >r
-    absolute-call rel-word
-    r>
-] JIT-DIP jit-define
-
-[
-    >r >r
-    absolute-call rel-word
-    r> r>
-] JIT-2DIP jit-define
-
-[
-    >r >r >r
-    absolute-call rel-word
-    r> r> r>
-] JIT-3DIP jit-define
-
-[
-    pop0
-    word-entry-point-offset temp0 temp0 LDUR
-]
-[ temp0 BLR ]
-[ temp0 BR ]
-\ (execute) define-combinator-primitive
-
-[
-    pop0
-    word-entry-point-offset temp0 temp0 LDUR
-    temp0 BR
-] JIT-EXECUTE jit-define
-
-[
-    stack-frame-size neg stack-reg link-reg stack-frame-reg STPpre
-    stack-reg stack-frame-reg MOVsp
-] JIT-PROLOG jit-define
-
-[
-    stack-frame-size stack-reg link-reg stack-frame-reg LDPpost
-] JIT-EPILOG jit-define
-
-[ f RET ] JIT-RETURN jit-define
-
-! ! ! Polymorphic inline caches
-
-! The PIC stubs are not permitted to touch pic-tail-reg.
+! Polymorphic inline caches
 
 ! Load a value from a stack position
 [
@@ -501,12 +449,43 @@ big-endian off
 ] PIC-CHECK-TAG jit-define
 
 [
+    3 words temp2 LDRl
+    temp2 temp1 CMPr
+    3 words Br
+    NOP NOP f rc-absolute-cell rel-literal
+] PIC-CHECK-TUPLE jit-define
+
+[
     5 words NE B.cond
     absolute-jump rel-word
 ] PIC-HIT jit-define
 
-! ! ! Megamorphic caches
+! Inline cache miss entry points
+: jit-load-return-address ( -- )
+    8 stack-reg return-address LDRuoff
+    3 words return-address return-address ADDi ;
 
+! These are always in tail position with an existing stack
+! frame, and the stack. The frame setup takes this into account.
+: jit-inline-cache-miss ( -- )
+    jit-save-context
+    return-address arg1 MOVr
+    vm-reg arg2 MOVr
+    absolute-call nip rel-inline-cache-miss
+    jit-load-context
+    jit-restore-context ;
+
+[ jit-load-return-address jit-inline-cache-miss ]
+[ arg1 BLR ]
+[ arg1 BR ]
+\ inline-cache-miss define-combinator-primitive
+
+[ jit-inline-cache-miss ]
+[ arg1 BLR ]
+[ arg1 BR ]
+\ inline-cache-miss-tail define-combinator-primitive
+
+! Megamorphic caches
 [
     ! class = ...
     temp1 temp0 MOVr
@@ -546,24 +525,104 @@ big-endian off
     ] jit-conditional*
 ] MEGA-LOOKUP jit-define
 
-! Comparisons
-: jit-compare ( cond -- )
-    ! load t
-    2 words temp3 LDRl
-    3 words Br
-    NOP NOP t rc-absolute-cell rel-literal
-    ! load f
-    \ f type-number temp2 MOVwi
-    ! load values
+: jit-pop-context-and-param ( -- )
+    pop-arg1
+    alien-offset arg1 arg1 LDUR
+    pop-arg2 ;
+
+: jit-switch-context ( reg -- )
+    ! Push a bogus return address so the GC can track this frame back
+    ! to the owner
+    ! 0 words temp0 ADR
+    ! -16 stack-reg temp0 stack-frame-reg STPpre
+
+    ! Make the new context the current one
+    ctx-reg MOVr
+    vm-context-offset vm-reg ctx-reg STRuoff
+
+    ! Load new stack pointer
+    context-callstack-top-offset ctx-reg temp0 LDRuoff
+    temp0 stack-reg MOVsp
+
+    ! Load new ds, rs registers
+    jit-restore-context
+
+    ctx-reg jit-update-tib ;
+
+: jit-push-param ( -- )
+    push-arg2 ;
+
+: jit-set-context ( -- )
+    jit-pop-context-and-param
+    jit-save-context
+    arg1 jit-switch-context
+    ! 16 stack-reg stack-reg ADDi
+    jit-push-param ;
+
+: jit-delete-current-context ( -- )
+    vm-reg "delete_context" jit-call-1arg ;
+
+: jit-pop-quot-and-param ( -- )
+    pop1 pop-arg2 ;
+
+: jit-start-context ( -- )
+    ! Create the new context in return-reg. Have to save context
+    ! twice, first before calling new_context() which may GC,
+    ! and again after popping the two parameters from the stack.
+    jit-save-context
+    vm-reg "new_context" jit-call-1arg
+
+    jit-pop-quot-and-param
+    jit-save-context
+    return-reg jit-switch-context
+    jit-push-param
+    temp1 arg1 MOVr
+    jit-jump-quot ;
+
+! Resets the active context and instead the passed in quotation
+! becomes the new code that it executes.
+: jit-start-context-and-delete ( -- )
+    ! Updates the context to match the values in the data and retain
+    ! stack registers. reset_context can GC.
+    jit-save-context
+
+    ! Resets the context. The top two ds items are preserved.
+    vm-reg "reset_context" jit-call-1arg
+
+    ! Switches to the same context I think.
+    ctx-reg jit-switch-context
+
+    ! Pops the quotation from the stack and puts it in arg1.
+    pop-arg1
+
+    ! Jump to quotation arg1
+    jit-jump-quot ;
+
+{
+    { (set-context) [ jit-set-context ] }
+    { (set-context-and-delete) [ jit-delete-current-context jit-set-context ] }
+    { (start-context) [ jit-start-context ] }
+    { (start-context-and-delete) [ jit-start-context-and-delete ] }
+} define-sub-primitives
+
+! Non-overflowing fixnum math
+: jit-math ( insn -- )
     load1/0
-    ! compare
-    temp0 temp1 CMPr
-    ! move t if true (f otherwise)
-    [ temp2 temp3 temp0 ] dip CSEL
-    ! store
+    [ temp0 temp1 temp0 ] dip execute( arg2 arg1 dst -- )
     1 push-down0 ;
 
-! Math
+{
+    { fixnum+fast [ \ ADDr jit-math ] }
+    { fixnum-fast [ \ SUBr jit-math ] }
+    { fixnum*fast [
+        load1/0
+        temp0 untag
+        temp1 temp0 temp0 MUL
+        1 push-down0
+    ] }
+} define-sub-primitives
+
+! Overflowing fixnum math
 : jit-overflow ( insn func -- )
     load-arg1/2
     jit-save-context
@@ -574,66 +633,7 @@ big-endian off
         jit-call
     ] jit-conditional* ; inline
 
-: jit-math ( insn -- )
-    ! load inputs
-    load1/0
-    ! compute result
-    [ temp0 temp1 temp0 ] dip execute( arg2 arg1 dst -- )
-    ! store result
-    1 push-down0 ;
-
-: jit-fixnum-/mod ( -- )
-    ! load parameters
-    load1/0
-    ! divide
-    temp0 temp1 temp2 SDIV
-    temp1 temp0 temp2 temp0 MSUB ;
-
-! # All arm.64 subprimitives
 {
-    ! ## Contexts
-    { (set-context) [ jit-set-context ] }
-    { (set-context-and-delete) [
-        jit-delete-current-context
-        jit-set-context
-    ] }
-    { (start-context) [ jit-start-context ] }
-    { (start-context-and-delete) [ jit-start-context-and-delete ] }
-
-    ! ## Entry points
-    { c-to-factor [
-        arg1 arg2 MOVr
-        vm-reg "begin_callback" jit-call-1arg
-
-        ! call the quotation
-        jit-call-quot
-
-        vm-reg "end_callback" jit-call-1arg
-    ] }
-    { unwind-native-frames [
-        ! unwind-native-frames is marked as "special" in
-        ! vm/quotations.cpp so it does not have a standard prolog
-        ! Unwind stack frames
-        arg2 stack-reg MOVsp
-
-        ! Load VM pointer into vm-reg, since we're entering from
-        ! C code
-        2 words vm-reg LDRl
-        3 words Br
-        NOP NOP 0 rc-absolute-cell rel-vm
-
-        ! Load ds and rs registers
-        jit-load-context
-        jit-restore-context
-
-        ! Clear the fault flag
-        vm-fault-flag-offset vm-reg XZR STRuoff
-
-        ! Call quotation
-        jit-jump-quot
-    ] }
-
-    ! ## Math
     { fixnum+ [ [ ADDSr ] "overflow_fixnum_add" jit-overflow ] }
     { fixnum- [ [ SUBSr ] "overflow_fixnum_subtract" jit-overflow ] }
     { fixnum* [
@@ -651,12 +651,155 @@ big-endian off
             "overflow_fixnum_multiply" jit-call
         ] jit-conditional*
     ] }
+} define-sub-primitives
 
-    ! ## Misc
-    { fpu-state [
-        FPSR XZR MSRr
+! Division and modulo
+: jit-fixnum-/mod ( -- )
+    load1/0
+    temp0 temp1 temp2 SDIV
+    temp1 temp0 temp2 temp0 MSUB ;
+
+{
+    { fixnum-mod [
+        jit-fixnum-/mod
+        1 push-down0
     ] }
-    { set-fpu-state [ ] }
+    { fixnum/i-fast [
+        jit-fixnum-/mod
+        tag-bits get temp2 temp0 LSLi
+        1 push-down0
+    ] }
+    { fixnum/mod-fast [
+        jit-fixnum-/mod
+        temp2 tag*
+        store2/0
+    ] }
+} define-sub-primitives
+
+! Comparisons
+: jit-compare ( cond -- )
+    2 words temp3 LDRl
+    3 words Br
+    NOP NOP t rc-absolute-cell rel-literal
+    \ f type-number temp2 MOVwi
+    load1/0
+    temp0 temp1 CMPr
+    [ temp2 temp3 temp0 ] dip CSEL
+    1 push-down0 ;
+
+{
+    { both-fixnums? [
+        load1/0
+        temp1 temp0 temp0 ORRr
+        tag-mask get temp0 TSTi
+        \ f type-number temp0 MOVwi
+        1 tag-fixnum temp1 MOVwi
+        temp0 temp1 temp0 EQ CSEL
+        1 push-down0
+    ] }
+
+    { eq? [ EQ jit-compare ] }
+    { fixnum> [ GT jit-compare ] }
+    { fixnum>= [ GE jit-compare ] }
+    { fixnum< [ LT jit-compare ] }
+    { fixnum<= [ LE jit-compare ] }
+
+    ! Bit manipulation
+    { fixnum-bitand [ \ ANDr jit-math ] }
+    { fixnum-bitnot [
+        load0
+        temp0 temp0 MVN
+        tag-mask get temp0 temp0 EORi
+        store0
+    ] }
+    { fixnum-bitor [ \ ORRr jit-math ] }
+    { fixnum-bitxor [ \ EORr jit-math ] }
+    { fixnum-shift-fast [
+        load1/0
+        temp0 untag
+        temp1 temp2 MOVr
+        temp0 temp1 temp1 LSLr
+        temp0 temp0 NEG
+        temp0 temp2 temp2 ASRr
+        tag-mask get bitnot temp2 temp2 ANDi
+        0 temp0 CMPi
+        temp2 temp1 temp0 MI CSEL
+        1 push-down0
+    ] }
+
+    ! Locals
+    { drop-locals [
+        pop0
+        tagged>offset0
+        temp0 rs-reg rs-reg SUBr
+    ] }
+    { get-local [
+        load0
+        tagged>offset0
+        temp0 rs-reg temp0 LDRr
+        store0
+    ] }
+    { load-local [ >r ] }
+
+    ! Objects
+    { slot [
+        ! load object and slot number
+        load1/0
+        ! turn slot number into offset
+        tagged>offset0
+        ! mask off tag
+        tag-mask get bitnot temp1 temp1 ANDi
+        ! load slot value
+        temp1 temp0 temp0 LDRr
+        ! push to stack
+        1 push-down0
+    ] }
+
+    { string-nth-fast [
+        load1/0
+        temp1 untag
+        string-offset temp0 temp0 ADDi
+        temp1 temp0 temp0 LDRBr
+        temp0 tag*
+        1 push-down0
+    ] }
+
+    { tag [
+        load0
+        tag-mask get temp0 temp0 ANDi
+        temp0 tag*
+        store0
+    ] }
+
+    ! Shufflers
+
+    ! Drops
+    { drop [ 1 ndrop ] }
+    { 2drop [ 2 ndrop ] }
+    { 3drop [ 3 ndrop ] }
+    { 4drop [ 4 ndrop ] }
+
+    ! Dups
+    { dup [ load0 push0 ] }
+    { 2dup [ load1/0 push1 push0 ] }
+    { 3dup [ load2 load1/0 push2 push1 push0 ] }
+    { 4dup [ load3/2 load1/0 push3 push2 push1 push0 ] }
+    { dupd [ load1/0 store1 push0 ] }
+
+    ! Misc shufflers
+    { over [ load1 push1 ] }
+    { pick [ load2 push2 ] }
+
+    ! Nips
+    { nip [ load0 1 push-down0 ] }
+    { 2nip [ load0 2 push-down0 ] }
+
+    ! Swaps
+    { -rot [ pop0 load2/1* store0/2 push1 ] }
+    { rot [ pop0 load2/1* store1/0 push2 ] }
+    { swap [ load1/0 store0/1 ] }
+    { swapd [ load2/1 store1/2 ] }
+
     { set-callstack [
         ! Load callstack object
         pop0
@@ -680,245 +823,6 @@ big-endian off
         32 stack-reg stack-reg ADDi
         ! Return with new callstack
         stack-frame-size stack-reg link-reg stack-frame-reg LDPpost
-        f RET
-    ] }
-
-    ! ## Fixnums
-    ! Non-overflowing fixnum (integer) addition
-    { fixnum+fast [ \ ADDr jit-math ] }
-
-    ! ### Bit manipulation
-    ! fixnum (integer) bitwise AND
-    { fixnum-bitand [ \ ANDr jit-math ] }
-
-    ! fixnum (integer) bitwise NOT
-    { fixnum-bitnot [
-        load0
-        ! complement
-        temp0 temp0 MVN
-        ! clear tag bits
-        tag-mask get temp0 temp0 EORi
-        store0
-    ] }
-
-    ! fixnum (integer) bitwise OR
-    { fixnum-bitor [ \ ORRr jit-math ] }
-
-    ! fixnum (integer) bitwise XOR
-    { fixnum-bitxor [ \ EORr jit-math ] }
-
-    ! fixnum (integer) bitwise shift (positive = left, negative = right)
-    { fixnum-shift-fast [
-        ! load shift count and value
-        load1/0
-        ! untag shift count
-        temp0 untag
-        ! make a copy
-        temp1 temp2 MOVr
-        ! compute positive shift value in temp1
-        temp0 temp1 temp1 LSLr
-        ! compute negative shift value in temp2
-        temp0 temp0 NEG
-        temp0 temp2 temp2 ASRr
-        tag-mask get bitnot temp2 temp2 ANDi
-        ! if shift count was negative
-        ! choose temp2 (else temp1)
-        0 temp0 CMPi
-        temp2 temp1 temp0 MI CSEL
-        ! push to stack
-        1 push-down0
-    ] }
-
-    ! ### Comparisons
-    ! returns true if both arguments are fixnums, and false otherwise
-    { both-fixnums? [
-        load1/0
-        temp1 temp0 temp0 ORRr
-        tag-mask get temp0 TSTi
-        \ f type-number temp0 MOVwi
-        1 tag-fixnum temp1 MOVwi
-        temp0 temp1 temp0 EQ CSEL
-        1 push-down0
-    ] }
-
-    ! fixnum (integer) equality comparison
-    { eq? [ EQ jit-compare ] }
-    ! fixnum (integer) greater-than comparison
-    { fixnum> [ GT jit-compare ] }
-    ! fixnum (integer) greater-than-or-equal comparison
-    { fixnum>= [ GE jit-compare ] }
-    ! fixnum (integer) less-than comparison
-    { fixnum< [ LT jit-compare ] }
-    ! fixnum (integer) less-than-or-equal comparison
-    { fixnum<= [ LE jit-compare ] }
-
-    ! ### Div/mod
-    ! fixnum (integer) modulo
-    { fixnum-mod [
-        jit-fixnum-/mod
-        ! push to stack
-        1 push-down0
-    ] }
-    ! fixnum (integer) division
-    { fixnum/i-fast [
-        jit-fixnum-/mod
-        ! tag it
-        tag-bits get temp2 temp0 LSLi
-        ! push to stack
-        1 push-down0
-    ] }
-    ! fixnum (integer) division and modulo
-    { fixnum/mod-fast [
-        jit-fixnum-/mod
-        ! tag it
-        temp2 tag*
-        ! push to stack
-        store2/0
-    ] }
-
-    ! ### Mul
-    ! Non-overflowing fixnum (integer) multiplication
-    { fixnum*fast [
-        ! load both inputs
-        load1/0
-        ! untag second input
-        temp0 untag
-        ! multiply
-        temp1 temp0 temp0 MUL
-        ! push result
-        1 push-down0
-    ] }
-
-    ! ### Sub
-    ! Non-overflowing fixnum (integer) subtraction
-    { fixnum-fast [ \ SUBr jit-math ] }
-
-    ! ## Locals
-    ! Drops all current locals stored on the retainstack.
-    { drop-locals [
-        ! load local count
-        pop0
-        ! turn local number into offset
-        tagged>offset0
-        ! decrement retain stack pointer
-        temp0 rs-reg rs-reg SUBr
-    ] }
-
-    ! Gets the nth local stored on the retainstack.
-    { get-local [
-        ! load local number
-        load0
-        ! turn local number into offset
-        tagged>offset0
-        ! load local value
-        temp0 rs-reg temp0 LDRr
-        ! push to stack
-        store0
-    ] }
-
-    ! Turns the top item on the datastack
-    ! into a local stored on the retainstack.
-    { load-local [ >r ] }
-
-    ! ## Objects
-    ! Reads the nth slot of a given object. (non-bounds-checking)
-    { slot [
-        ! load object and slot number
-        load1/0
-        ! turn slot number into offset
-        tagged>offset0
-        ! mask off tag
-        tag-mask get bitnot temp1 temp1 ANDi
-        ! load slot value
-        temp1 temp0 temp0 LDRr
-        ! push to stack
-        1 push-down0
-    ] }
-
-    ! nth string element selector (non-bounds-checking)
-    { string-nth-fast [
-        ! load string index and string from stack
-        load1/0
-        temp1 untag
-        ! load character
-        string-offset temp0 temp0 ADDi
-        temp1 temp0 temp0 LDRBr
-        temp0 tag*
-        ! store character to stack
-        1 push-down0
-    ] }
-
-    ! add tag bits to integers
-    ! (the local word tag just shifts left)
-    { tag [
-        ! load from stack
-        load0
-        ! compute tag
-        tag-mask get temp0 temp0 ANDi
-        ! tag the tag
-        temp0 tag*
-        ! push to stack
-        store0
-    ] }
-
-    ! ## Shufflers
-
-    ! ### Drops
-    ! drops the top n stack items
-    { drop [ 1 ndrop ] }
-    { 2drop [ 2 ndrop ] }
-    { 3drop [ 3 ndrop ] }
-    { 4drop [ 4 ndrop ] }
-
-    ! ### Dups
-    ! duplicates the top n stack items in order
-    { dup [ load0 push0 ] }
-    { 2dup [ load1/0 push1 push0 ] }
-    { 3dup [ load2 load1/0 push2 push1 push0 ] }
-    { 4dup [ load3/2 load1/0 push3 push2 push1 push0 ] }
-    ! duplicates the second stack item and puts it below the top stack item
-    { dupd [ load1/0 store1 push0 ] }
-
-    ! ### Misc shufflers
-    ! Duplicates the second stack item and puts it above the top stack item
-    { over [ load1 push1 ] }
-    ! Duplicates the the third stack item and puts it above the top stack item
-    { pick [ load2 push2 ] }
-
-    ! ### Nips
-    ! Drops the second stack item
-    { nip [ load0 1 push-down0 ] }
-    ! Drops the second and third stack items
-    { 2nip [ load0 2 push-down0 ] }
-
-    ! ### Swaps
-    ! Rotates the top three elements of the stack (1st -> 3rd)
-    { -rot [ pop0 load2/1* store0/2 push1 ] }
-    ! Rotates the top three elements of the stack (1st -> 2nd)
-    { rot [ pop0 load2/1* store1/0 push2 ] }
-    ! Swaps the top two elements of the stack
-    { swap [ load1/0 store0/1 ] }
-    ! Swaps the second and third elements of the stack
-    { swapd [ load2/1 store1/2 ] }
-
-    ! ## Signal handling
-    { leaf-signal-handler [
-        jit-signal-handler-prolog
-        jit-save-context
-        vm-signal-handler-addr-offset vm-reg temp0 LDRuoff
-        temp0 BLR
-        jit-signal-handler-epilog
-        ! Pop the fake leaf frame along with our return address
-        leaf-stack-frame-size stack-reg link-reg stack-frame-reg LDPpost
-        f RET
-    ] }
-    { signal-handler [
-        jit-signal-handler-prolog
-        jit-save-context
-        vm-signal-handler-addr-offset vm-reg temp0 LDRuoff
-        temp0 BLR
-        jit-signal-handler-epilog
-        pop-link-reg
         f RET
     ] }
 } define-sub-primitives
