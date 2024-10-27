@@ -51,8 +51,8 @@ big-endian off
 : ctx-reg ( -- reg ) X25 ; inline
 : return-address ( -- reg ) X24 ; inline
 
-: push-link-reg ( -- ) -16 stack-reg link-reg STRpre ;
-: pop-link-reg ( -- ) 16 stack-reg link-reg LDRpost ;
+: push-link-reg ( -- ) -16 stack-reg link-reg stack-frame-reg STPpre ;
+: pop-link-reg ( -- ) 16 stack-reg link-reg stack-frame-reg LDPpost ;
 
 : load0 ( -- ) 0 ds-reg temp0 LDRuoff ;
 : load1 ( -- ) -8 ds-reg temp1 LDUR ;
@@ -66,6 +66,7 @@ big-endian off
 : ndrop ( n -- ) bootstrap-cells ds-reg dup SUBi ;
 
 : pop0 ( -- ) -8 ds-reg temp0 LDRpost ;
+: pop1 ( -- ) -8 ds-reg temp1 LDRpost ;
 : popr ( -- ) -8 rs-reg temp0 LDRpost ;
 : pop-arg1 ( -- ) -8 ds-reg arg1 LDRpost ;
 : pop-arg2 ( -- ) -8 ds-reg arg2 LDRpost ;
@@ -153,10 +154,11 @@ big-endian off
 ! into the corresponding fields in the ctx struct.
 : jit-save-context ( -- )
     jit-load-context
-    ! The reason for -8 I think is because we are anticipating a CALL
+    ! The reason for -16 I think is because we are anticipating a CALL
     ! instruction. After the call instruction, the contexts frame_top
     ! will point to the origin jump address.
     stack-reg temp0 MOVsp
+    ! 16 stack-reg temp0 SUBi
     context-callstack-top-offset ctx-reg temp0 STRuoff
     context-datastack-offset ctx-reg ds-reg STRuoff
     context-retainstack-offset ctx-reg rs-reg STRuoff ;
@@ -221,7 +223,7 @@ big-endian off
 ! Inline cache miss entry points
 : jit-load-return-address ( -- )
     ! RBX RSP stack-frame-size bootstrap-cell - [+] MOV ;
-    0 stack-reg return-address LDRuoff
+    8 stack-reg return-address LDRuoff
     3 words return-address return-address ADDi ;
 
 ! These are always in tail position with an existing stack
@@ -259,7 +261,8 @@ big-endian off
     ! ! Push a bogus return address so the GC can track this frame back
     ! ! to the owner
     ! 0 CALL
-    0 BL ! ?!
+    ! 0 words temp0 ADR
+    ! -16 stack-reg temp0 stack-frame-reg STPpre
 
     ! ! Make the new context the current one
     ! ctx-reg swap MOV
@@ -290,11 +293,11 @@ big-endian off
     jit-pop-context-and-param
     jit-save-context
     arg1 jit-switch-context
-    16 stack-reg stack-reg ADDi
+    ! 16 stack-reg stack-reg ADDi
     jit-push-param ;
 
-: jit-pop-quot-and-param ( -- )
-    pop-arg1 pop-arg2 ;
+: jit-pop-quot-and-param ( -- ) ! ( param quot -- )
+    pop1 pop-arg2 ;
 
 : jit-start-context ( -- )
     ! Create the new context in return-reg. Have to save context
@@ -307,6 +310,7 @@ big-endian off
     jit-save-context
     return-reg jit-switch-context
     jit-push-param
+    temp1 arg1 MOVr
     jit-jump-quot ;
 
 : jit-delete-current-context ( -- )
@@ -477,6 +481,7 @@ big-endian off
 
 : jit-signal-handler-epilog ( -- )
     ! stack-reg stack-reg 7 bootstrap-cells [+] LEA
+    4 bootstrap-cells stack-reg stack-reg ADDi
     ! POPF
     ! signal-handler-save-regs reverse [ POP ] each ;
     16 SP X0 X30 LDPpost
@@ -560,15 +565,13 @@ big-endian off
 ! https://elixir.bootlin.com/linux/latest/source/arch/arm64/kernel/stacktrace.c#L22
 ! Performs setup for a quotation
 [
-    ! ! make room for LR plus magic number of callback, 16byte align
-    stack-frame-size 2 bootstrap-cells - stack-reg stack-reg SUBi
-    push-link-reg
+    stack-frame-size neg stack-reg link-reg stack-frame-reg STPpre
+    stack-reg stack-frame-reg MOVsp
 ] JIT-PROLOG jit-define
 
 ! Performs teardown for a quotation
 [
-    pop-link-reg
-    stack-frame-size 2 bootstrap-cells - stack-reg stack-reg ADDi
+    stack-frame-size stack-reg link-reg stack-frame-reg LDPpost
 ] JIT-EPILOG jit-define
 
 ! returns to the outer stack frame
@@ -869,7 +872,7 @@ big-endian off
         32 stack-reg stack-reg ADDi
         ! ! Return with new callstack
         ! 0 RET
-        pop-link-reg
+        stack-frame-size stack-reg link-reg stack-frame-reg LDPpost
         f RET
     ] }
 
@@ -1110,7 +1113,7 @@ big-endian off
         jit-signal-handler-epilog
         ! Pop the fake leaf frame along with our return address
         ! leaf-stack-frame-size bootstrap-cell - RET
-        leaf-stack-frame-size bootstrap-cell - SP SP ADDi
+        leaf-stack-frame-size stack-reg link-reg stack-frame-reg LDPpost
         f RET
     ] }
     { signal-handler [
@@ -1122,6 +1125,7 @@ big-endian off
         temp0 BLR
         jit-signal-handler-epilog
         ! 0 RET
+        pop-link-reg
         f RET
     ] }
 } define-sub-primitives
