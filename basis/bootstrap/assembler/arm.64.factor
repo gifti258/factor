@@ -12,13 +12,6 @@ IN: bootstrap.assembler.arm
 
 big-endian off
 
-: context-callstack-top-offset ( -- n ) 0 bootstrap-cells ; inline
-: context-callstack-bottom-offset ( -- n ) 2 bootstrap-cells ; inline
-: context-datastack-offset ( -- n ) 3 bootstrap-cells ; inline
-: context-retainstack-offset ( -- n ) 4 bootstrap-cells ; inline
-: context-callstack-save-offset ( -- n ) 5 bootstrap-cells ; inline
-: context-callstack-seg-offset ( -- n ) 8 bootstrap-cells ; inline
-
 ! X0-X17  volatile     scratch registers
 ! X0-X8                parameter registers
 ! X0                   result register
