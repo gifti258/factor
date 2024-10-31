@@ -100,7 +100,7 @@ M: arm.64 stack-frame-size (stack-frame-size) 2 cells + 16 align ;
 M: arm.64 %call (LDR=BLR) rel-word-pic ;
 
 M: arm.64 %jump
-    PIC-TAIL 5 insns ADR
+    PIC-TAIL 7 insns ADR
     (LDR=BR) rel-word-pic-tail ;
 
 M: arm.64 %jump-label
