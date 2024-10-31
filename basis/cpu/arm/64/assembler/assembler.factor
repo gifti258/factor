@@ -664,9 +664,11 @@ M: integer BL 1 unconditional-branch-imm ;
 M: label B  0 B  rc-relative-arm-b label-fixup ;
 M: label BL 0 BL rc-relative-arm-b label-fixup ;
 
+: B-BRK ( u16 -- ) 2 insns B BRK ;
 
 ! Pseudo load with immediate literal pool
 : (LDR=) ( Rt -- class )
+    0xc2 B-BRK
     [ 2 insns LDR ] [
         encode-width
         [ 2 + insns B ]
@@ -678,8 +680,11 @@ M: label BL 0 BL rc-relative-arm-b label-fixup ;
 
 ! literal load and call
 : (LDR=BLR) ( -- class )
-    temp 3 insns LDR
+    0xc1 B-BRK
+    temp 7 insns LDR
+    0xc0 B-BRK
     temp BLR
+    0xc1 B-BRK
     3 insns B
     8 0 <array> % rc-absolute-cell ;
 
@@ -687,6 +692,7 @@ M: label BL 0 BL rc-relative-arm-b label-fixup ;
 
 ! literal load and jump
 : (LDR=BR) ( -- class )
+    0xc2 B-BRK
     temp 2 insns LDR
     temp BR
     8 0 <array> % rc-absolute-cell ;
