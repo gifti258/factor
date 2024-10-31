@@ -5,6 +5,8 @@ USE: kernel.private
 USE: math.private
 IN: kernel
 
+SYMBOL: brk
+
 BUILTIN: callstack ;
 BUILTIN: tuple ;
 BUILTIN: wrapper { wrapped read-only } ;
