@@ -161,7 +161,7 @@ M:: arm.64 %bit-test ( DST SRC1 SRC2 TEMP -- )
 
 : stack@ ( n -- op ) [ SP ] dip [+] ;
 
-: spill@ ( n -- op ) spill-offset special-offset stack@ ;
+: spill@ ( n -- op ) spill-offset special-offset 2 cells + stack@ ;
 
 : ?spill-slot ( obj -- obj ) dup spill-slot? [ n>> spill@ ] when ;
 
