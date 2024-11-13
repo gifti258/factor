@@ -103,6 +103,7 @@ CONSTANT: default-components
     f error-continuation set-global
     "output-image" get save-image-and-exit
 ] [
+    brk
     drop
     [
         load-help? off

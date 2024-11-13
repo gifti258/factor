@@ -150,7 +150,7 @@ M: optimizing-compiler update-call-sites ( class generic -- words )
 M: optimizing-compiler recompile ( words -- alist )
     H{ } clone compiled [
         [ compile? ] filter
-        [ compile-word yield-hook get call( -- ) ] each
+        [ dup name>> print flush compile-word yield-hook get call( -- ) ] each
         compiled get >alist
     ] with-variable
     "--- compile done" compiler-message ;
