@@ -11,7 +11,6 @@ sequences system vm ;
 QUALIFIED-WITH: alien.c-types c
 FROM: cpu.arm.64.assembler => B ;
 IN: cpu.arm.64
-USE: multiline
 
 M: arm.64 machine-registers {
     {
@@ -416,19 +415,24 @@ M:: arm.64 %allot ( DST size class NURSERY-PTR -- )
 :: (%write-barrier) ( TEMP1 TEMP2 -- )
     temp card-mark MOV
     TEMP1 dup card-bits LSR
-    TEMP2 (LDR=) rel-cards-offset
-    temp TEMP1 TEMP2 [+] STR
+    temp TEMP1 CARDS-OFFSET [+] STR
+    ! TEMP2 (LDR=) rel-cards-offset
+    ! temp TEMP1 TEMP2 [+] STR
     TEMP1 dup deck-bits card-bits - LSR
-    TEMP2 (LDR=) rel-decks-offset
-    temp TEMP1 TEMP2 [+] STR ;
+    temp TEMP1 DECKS-OFFSET [+] STR
+    ! TEMP2 (LDR=) rel-decks-offset
+    ! temp TEMP1 TEMP2 [+] STR
+    ;
 
 M:: arm.64 %write-barrier ( SRC SLOT scale tag TEMP1 TEMP2 -- )
-    TEMP1 SRC SLOT scale <LSL*> ADD
-    TEMP1 TEMP1 tag ADD
+    TEMP1 SRC SLOT scale tag (%slot) LDR
+    ! TEMP1 SRC SLOT scale <LSL*> ADD
+    ! TEMP1 TEMP1 tag ADD
     TEMP1 TEMP2 (%write-barrier) ;
 
 M:: arm.64 %write-barrier-imm ( SRC SLOT tag TEMP1 TEMP2 -- )
-    TEMP1 SRC SLOT tag slot-offset ADD
+    TEMP1 SRC SLOT tag (%slot-imm) LDR
+    ! TEMP1 SRC SLOT tag slot-offset ADD
     TEMP1 TEMP2 (%write-barrier) ;
 
 M:: arm.64 %check-nursery-branch ( label size cc TEMP1 TEMP2 -- )
