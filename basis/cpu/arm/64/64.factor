@@ -396,9 +396,9 @@ M: arm.64 %box-displaced-alien 5drop ;
 M: arm.64 %convert-integer [ [ 0 ] dip c:heap-size 1 - ] [ c:c-type-signed ] bi [ SBFM ] [ UBFM ] if ;
 
 M: arm.64 %load-memory 7 ndrop ;
-M: arm.64 %load-memory-imm 5drop ;
+M: arm.64 %load-memory-imm drop [ [+] ] dip copy-memory* ;
 M: arm.64 %store-memory 7 ndrop ;
-M: arm.64 %store-memory-imm 5drop ;
+M: arm.64 %store-memory-imm drop [ [+] swap ] dip copy-memory* ;
 
 M: arm.64 %alien-global [ 0 MOV ] 2dip rc-absolute-cell rel-dlsym ;
 M: arm.64 %vm-field [ VM ] dip [+] LDR ;
