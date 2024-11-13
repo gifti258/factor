@@ -6,8 +6,8 @@ import subprocess
 debugger = lldb.SBDebugger.Create()
 debugger.SetAsync(False)
 target = debugger.CreateTarget("./factor")
-# process = target.LaunchSimple(["-i=boot.unix-arm.64.image"], None, os.getcwd())
-process = target.AttachToProcessWithID(debugger.GetListener(), int(subprocess.getoutput('pidof factor')), lldb.SBError())
+process = target.LaunchSimple(["-i=boot.unix-arm.64.image"], None, os.getcwd())
+# process = target.AttachToProcessWithID(debugger.GetListener(), int(subprocess.getoutput('pidof factor')), lldb.SBError())
 thread = process.thread[0]
 
 def update_frame():
@@ -72,7 +72,9 @@ def get_str(str_ptr): #-> string
     return process.ReadCStringFromMemory(str_ptr + 21, get_str_len(str_ptr) + 1, lldb.SBError())
 
 def get_name(word_ptr): #-> string
-    return get_str(get_ptr(word_ptr, 4))
+    vocab = get_ptr(word_ptr, 12)
+    name = get_str(get_ptr(word_ptr, 4))
+    return ('' if vocab == 1 else get_str(vocab) + ':') + name
 
 def get_first(array_ptr): #-> ptr
     return get_ptr(array_ptr, 14)
@@ -93,7 +95,11 @@ def quot_contents(ptr): #-> str
 def value(ptr): #-> string
     match ptr%16:
         case 0x0:
-            return f'{ptr//16}'
+            n = ptr//16
+            if n >= 576460752303423488:
+                return f'{n-1152921504606846976}'
+            else:
+                return f'{n}'
         case 0x1:
             return 'f'
         case 0x2:
@@ -125,7 +131,7 @@ def block_name(addr): #-> string
     return value(get_owner(addr))
 
 def get_primitive():
-    return target.ResolveLoadAddress(get_ptr(frame.pc, 84)).symbol.name
+    return target.ResolveLoadAddress(get_ptr(frame.pc, 80)).symbol.name
 
 def break_out():
     debugger.HandleCommand('process status')
@@ -138,9 +144,35 @@ def calibrate_stacks():
     cs_bottom = call_stack_bottom()
     calibrate = False
 
-step_into_words = True
-input('press key to continue')
-process.Continue()
+def step_bytes(n):
+    thread.RunToAddress(thread.frame[0].pc + n)
+    step(1)
+
+def step_through(word):
+    match word:
+        case 'hashtables.private:wrap':
+            step_bytes(100)
+        case 'kernel:compose':
+            step_bytes(320)
+        case 'kernel:curry':
+            step_bytes(232)
+        case 'kernel:not':
+            step_bytes(52)
+        case 'math:+':
+            step_bytes(56)
+        case 'fixnum=>shift':
+            step_bytes(80)
+        case 'math.bitwise:wrap':
+            step_bytes(44)
+        case 'sequences.private:array-nth':
+            step_bytes(44)
+        case 'sequences.private:set-array-nth':
+            step_bytes(44)
+
+step_into_words = False
+first_with_variables = True
+# input('press key to continue')
+# process.Continue()
 update_frame()
 jump_over()
 # step(4)
@@ -163,13 +195,20 @@ while True:
         case '19':
             print(f'PRIMITIVE {get_primitive()}')
             step(1)
-        case '1a':
-            print(f'JUMP {block_name(get_ptr(frame.pc, 28))}')
-            step(2)
-        case '1b':
+        case '1a': #JUMP
+            word = block_name(get_ptr(frame.pc, 28))
+            print(f'JUMP {word}')
+            # step(2)
+            step(5)
+            step_through(word)
+        case '1b': #CALL
             word = block_name(get_ptr(frame.pc, 44))
             print(f'CALL {word}')
-            if step_into_words:
+            if step_into_words or word in ['bootstrap.compiler:compile-unoptimized', 'compiler.units:recompile', 'compiler.cfg.linear-scan:linear-scan', 'compiler.cfg.linear-scan:allocate-and-assign-registers', 'compiler.cfg.linear-scan.allocation:allocate-registers', 'compiler.cfg.linear-scan.allocation:(allocate-registers)']:
+                step(5)
+                # step_through(word)
+            elif first_with_variables and word == 'namespaces:with-variable':
+                first_with_variables = False
                 step(5)
             else:
                 step(1)
@@ -247,8 +286,11 @@ while True:
             print('CHECK-TUPLE')
             step(1)
         case '3b':
-            print('HIT')
-            step(2)
+            word = block_name(get_ptr(frame.pc, 28))
+            print(f'HIT {word}')
+            step(1)
+            step(4 if int(thread.frame[0].reg['cpsr'].value, 16) >> 30 & 1 else 1)
+            step_through(word)
         case '3c00':
             print('inline-cache-miss/load')
             step(1)
