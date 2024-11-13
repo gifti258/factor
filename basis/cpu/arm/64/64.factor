@@ -111,10 +111,10 @@ M:: arm.64 %dispatch ( SRC TEMP -- )
     ;
 
 :: (%slot) ( OBJ SLOT scale tag -- operand )
-    temp OBJ tag-bits get BIC
+    temp OBJ tag-mask get bitnot AND
     temp SLOT scale <LSL*> [+] ; inline
 
-: (%slot-imm) ( OBJ SLOT tag -- op ) slot-offset [+] ; inline
+: (%slot-imm) ( OBJ SLOT tag -- operand ) slot-offset [+] ; inline
 
 M: arm.64 %slot (%slot) LDR ;
 M: arm.64 %slot-imm (%slot-imm) LDR ;
