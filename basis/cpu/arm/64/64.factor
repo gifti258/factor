@@ -43,16 +43,12 @@ M: arm.64 reserved-stack-space 0 ;
 M: arm.64 gc-root-offset n>> spill-offset special-offset cell + cell /i ;
 
 M: arm.64 %load-immediate ( reg val -- )
-    [ XZR MOV ] [ (( reg val ))
-        4 <iota> (( reg val hws )) [ (( val hw ))
-            ! tuck (( hw val hw ))
-            [ -16 * shift 0xffff bitand ] keep (( val' hw ))
-        ] with map>alist [ 0 = ] reject-keys (( reg { val hw } ))
-        unclip (( reg rest first ))
-        overd (( reg rest reg first ))
-        first2 (( ... reg val hw ))
-        MOVZ (( reg rest ))
-        [ first2 (( reg val hw )) MOVK ] with each
+    [ XZR MOV ] [
+        4 <iota> [
+            [ -16 * shift 0xffff bitand ] keep
+        ] with map>alist [ 0 = ] reject-keys
+        unclip overd first2 MOVZ
+        [ first2 MOVK ] with each
     ] if-zero ;
 
 M: arm.64 %load-reference
