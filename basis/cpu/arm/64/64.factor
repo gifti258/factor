@@ -387,16 +387,17 @@ M: arm.64 %shr-vector-imm-reps int-vector-reps ;
 M: arm.64 %horizontal-shl-vector-imm-reps f ;
 M: arm.64 %horizontal-shr-vector-imm-reps f ;
 
-M: arm.64 %unbox-alien 2drop ;
-M: arm.64 %unbox-any-c-ptr 2drop ;
-M: arm.64 %box-alien 3drop ;
-M: arm.64 %box-displaced-alien 5drop ;
+ERROR: not-implemented ;
+M: arm.64 %unbox-alien not-implemented ;
+M: arm.64 %unbox-any-c-ptr not-implemented ;
+M: arm.64 %box-alien not-implemented ;
+M: arm.64 %box-displaced-alien not-implemented ;
 
 M: arm.64 %convert-integer [ [ 0 ] dip c:heap-size 1 - ] [ c:c-type-signed ] bi [ SBFM ] [ UBFM ] if ;
 
-M: arm.64 %load-memory 7 ndrop ;
+M: arm.64 %load-memory not-implemented ;
 M: arm.64 %load-memory-imm drop [ [+] ] dip copy-memory* ;
-M: arm.64 %store-memory 7 ndrop ;
+M: arm.64 %store-memory not-implemented ;
 M: arm.64 %store-memory-imm drop [ [+] swap ] dip copy-memory* ;
 
 M: arm.64 %alien-global [ 0 MOV ] 2dip rc-absolute-cell rel-dlsym ;
