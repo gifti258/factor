@@ -459,7 +459,7 @@ M: add/sub-immediate SUBS [ check-zero-register  ] 2dip 3 add/sub-imm ;
 
 : (logical-immediate?) ( imm imm-width -- ? )
     [ make-bits* ] keep
-    [ bits-all-equal? not ] [ repeating-element? ] 2bi and ;
+    { [ bits-all-equal? not ] [ repeating-element? ] } 2&& ;
 
 PREDICATE: logical-32-bit-immediate < integer 32 (logical-immediate?) ;
 PREDICATE: logical-64-bit-immediate < integer 64 (logical-immediate?) ;
