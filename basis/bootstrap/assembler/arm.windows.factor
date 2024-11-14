@@ -1,4 +1,4 @@
-! Copyright (C) 2024 Giftplfanze.
+! Copyright (C) 2024 Giftpflanze.
 ! See https://factorcode.org/license.txt for BSD license.
 USING: compiler.constants cpu.arm.64.assembler layouts ;
 IN: bootstrap.assembler.arm

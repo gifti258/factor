@@ -825,6 +825,18 @@ M: register-offset LDR 1 load/store-register-register ;
         12
     } encode ;
 
+: STRB ( Rt operand -- )
+    >offset< [ >operand< ] dip {
+        { 0b111 27 }
+        { 0b1 21 }
+        { n>> 0 }
+        { X/SP 5 }
+        { R/ZR 16 }
+        13
+        12
+        10
+    } encode ;
+
 
 : data-processing-2-sources ( Rd Rn Rm opcode -- )
     [ 3encode-width ] dip {

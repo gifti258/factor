@@ -415,11 +415,11 @@ M:: arm.64 %allot ( DST size class NURSERY-PTR -- )
 :: (%write-barrier) ( TEMP1 TEMP2 -- )
     temp card-mark MOV
     TEMP1 dup card-bits LSR
-    temp TEMP1 CARDS-OFFSET [+] STR
+    temp TEMP1 CARDS-OFFSET [+] STRB
     ! TEMP2 (LDR=) rel-cards-offset
     ! temp TEMP1 TEMP2 [+] STR
     TEMP1 dup deck-bits card-bits - LSR
-    temp TEMP1 DECKS-OFFSET [+] STR
+    temp TEMP1 DECKS-OFFSET [+] STRB
     ! TEMP2 (LDR=) rel-decks-offset
     ! temp TEMP1 TEMP2 [+] STR
     ;
