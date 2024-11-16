@@ -943,7 +943,7 @@ M: shifted-register SUBS 3 add/sub-shifted-register ;
     [ >operand< ] dip (( Rd Rn Rm type amount op ))
     [ 3encode-width ] 3dip (( Rd Rn Rm sf type amount op ))
     {
-        { 0b11010000 21 }
+        { 0b01011001 21 }
         { R/SP 0 }
         { R/SP 5 }
         { R/ZR 16 }

@@ -105,20 +105,16 @@ M: arm.64 %jump-label
 
 M: arm.64 %return RET ;
 
-M:: arm.64 %dispatch ( SRC TEMP -- )
-
-    ;
+M:: arm.64 %dispatch ( SRC TEMP -- ) not-implemented ;
 
 :: (%slot) ( OBJ SLOT scale tag -- operand )
-    temp OBJ tag-mask get bitnot AND
-    temp SLOT scale <LSL*> [+] ; inline
+    temp OBJ tag neg ADD
+    temp SLOT scale <LSL*> ; inline
 
-: (%slot-imm) ( OBJ SLOT tag -- operand ) slot-offset [+] ; inline
-
-M: arm.64 %slot (%slot) LDR ;
-M: arm.64 %slot-imm (%slot-imm) LDR ;
-M: arm.64 %set-slot (%slot) STR ;
-M: arm.64 %set-slot-imm (%slot-imm) STR ;
+M: arm.64 %slot (%slot) [+] LDR ;
+M: arm.64 %slot-imm slot-offset [+] LDR ;
+M: arm.64 %set-slot (%slot) [+] STR ;
+M: arm.64 %set-slot-imm slot-offset [+] STR ;
 
 :: (%boolean) ( DST TEMP -- )
     DST \ f type-number MOV
@@ -417,23 +413,15 @@ M:: arm.64 %allot ( DST size class NURSERY-PTR -- )
     temp card-mark MOV
     TEMP1 dup card-bits LSR
     temp TEMP1 CARDS-OFFSET [+] STRB
-    ! TEMP2 (LDR=) rel-cards-offset
-    ! temp TEMP1 TEMP2 [+] STR
     TEMP1 dup deck-bits card-bits - LSR
-    temp TEMP1 DECKS-OFFSET [+] STRB
-    ! TEMP2 (LDR=) rel-decks-offset
-    ! temp TEMP1 TEMP2 [+] STR
-    ;
+    temp TEMP1 DECKS-OFFSET [+] STRB ;
 
 M:: arm.64 %write-barrier ( SRC SLOT scale tag TEMP1 TEMP2 -- )
-    TEMP1 SRC SLOT scale tag (%slot) LDR
-    ! TEMP1 SRC SLOT scale <LSL*> ADD
-    ! TEMP1 TEMP1 tag ADD
+    TEMP1 SRC SLOT scale tag (%slot) ADD
     TEMP1 TEMP2 (%write-barrier) ;
 
-M:: arm.64 %write-barrier-imm ( SRC SLOT tag TEMP1 TEMP2 -- )
-    TEMP1 SRC SLOT tag (%slot-imm) LDR
-    ! TEMP1 SRC SLOT tag slot-offset ADD
+M:: arm.64 %write-barrier-imm ( SRC slot tag TEMP1 TEMP2 -- )
+    TEMP1 SRC slot tag slot-offset ADD
     TEMP1 TEMP2 (%write-barrier) ;
 
 M:: arm.64 %check-nursery-branch ( label size cc TEMP1 TEMP2 -- )
