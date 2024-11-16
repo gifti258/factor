@@ -12,6 +12,8 @@ QUALIFIED-WITH: alien.c-types c
 FROM: cpu.arm.64.assembler => B ;
 IN: cpu.arm.64
 
+ERROR: not-implemented ;
+
 M: arm.64 machine-registers {
     {
         int-regs {
@@ -383,7 +385,6 @@ M: arm.64 %shr-vector-imm-reps int-vector-reps ;
 M: arm.64 %horizontal-shl-vector-imm-reps f ;
 M: arm.64 %horizontal-shr-vector-imm-reps f ;
 
-ERROR: not-implemented ;
 M: arm.64 %unbox-alien not-implemented ;
 M: arm.64 %unbox-any-c-ptr not-implemented ;
 M: arm.64 %box-alien not-implemented ;
