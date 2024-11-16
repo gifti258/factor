@@ -9,6 +9,14 @@ vocabs vocabs.loader words ;
 FROM: compiler => enable-optimizer ;
 IN: bootstrap.compiler
 
+! USE: compiler
+! USE: compiler.cfg.builder
+! USE: compiler.cfg.optimizer
+! USE: compiler.cfg.finalization
+! USE: compiler.cfg
+! USE: compiler.cfg.linearization
+! USE: prettyprint
+
 ! Don't bring this in when deploying, since it will store a
 ! reference to 'eval' in a global variable
 "staging" get [
@@ -75,6 +83,8 @@ gc
     } compile-unoptimized
 
     "." write flush
+
+    ! \ pop [ frontend ] keep build-cfg first [ [ optimize-cfg ] [ finalize-cfg ] [ ] tri ] with-cfg linearization-order [ instructions>> [ ... ] each ] each
 
     {
         new-sequence nth push pop last flip
