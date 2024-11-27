@@ -607,7 +607,7 @@ big-endian off
     { string-nth-fast [
         ds-1 ds-0 DS -8 [pre] LDP
         ds-0 dup ds-1 tag-bits get <ASR> ADD
-        ds-0 dup string-offset [+] LDURB
+        ds-0 dup string-offset [+] LDRB
         ds-0 dup tag-bits get LSL
         ds-0 DS [] STR
     ] }
