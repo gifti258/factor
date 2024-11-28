@@ -1,7 +1,7 @@
 ! Copyright (C) 2023 Giftpflanze.
 ! See https://factorcode.org/license.txt for BSD license.
-USING: accessors alien.c-types alien.data assocs classes.struct
-combinators compiler.cfg compiler.cfg.comparisons
+USING: accessors alien alien.c-types alien.data assocs
+classes.struct combinators compiler.cfg compiler.cfg.comparisons
 compiler.cfg.instructions compiler.cfg.intrinsics
 compiler.cfg.registers compiler.cfg.stack-frame
 compiler.codegen.gc-maps compiler.codegen.labels
@@ -14,14 +14,14 @@ IN: cpu.arm.64
 
 ERROR: not-implemented word ;
 
-M: arm.64 machine-registers ${
+M: arm.64 machine-registers {
     {
-        int-regs {
+        int-regs ${
             X0  X1  X2  X3  X4  X5  X6  X7  X8
             X10 X11 X12 X13 X14 X15
         }
     } {
-        float-regs {
+        float-regs ${
             V0  V1  V2  V3  V4  V5  V6  V7
             V8  V9  V10 V11 V12 V13 V14 V15
             V16 V17 V18 V19 V20 V21 V22 V23
@@ -370,8 +370,25 @@ M: arm.64 %shr-vector-reps int-vector-reps ;
 M: arm.64 %shl-vector-imm-reps int-vector-reps ;
 M: arm.64 %shr-vector-imm-reps int-vector-reps ;
 
-M: arm.64 %unbox-alien \ %unbox-alien not-implemented ;
-M: arm.64 %unbox-any-c-ptr \ %unbox-any-c-ptr not-implemented ;
+M: arm.64 %unbox-alien alien-offset [+] LDR ;
+
+M:: arm.64 %unbox-any-c-ptr ( DST SRC -- )
+    <label> :> end
+    DST XZR MOV
+    ! is the object f?
+    SRC \ f type-number CMP
+    end BEQ
+    ! compute tag in DST register
+    DST SRC tag-mask get AND
+    ! is the object an alien?
+    DST alien type-number CMP
+    ! add an offset to the start of byte array's data
+    DST SRC byte-array-offset ADD
+    end BNE
+    ! if so, load the offset and add it to the address
+    DST SRC alien-offset [+] LDR
+    end resolve-label ;
+
 M: arm.64 %box-alien \ %box-alien not-implemented ;
 M: arm.64 %box-displaced-alien \ %box-displaced-alien not-implemented ;
 
@@ -439,13 +456,13 @@ M: arm.64 %safepoint
 M: arm.64 test-instruction? t ;
 
 : cc>cond ( cc -- cond )
-    order-cc ${
-        { cc<  LT }
-        { cc<= LE }
-        { cc>  GT }
-        { cc>= GE }
-        { cc=  EQ }
-        { cc/= NE }
+    order-cc {
+        ${ cc<  LT }
+        ${ cc<= LE }
+        ${ cc>  GT }
+        ${ cc>= GE }
+        ${ cc=  EQ }
+        ${ cc/= NE }
     } at ;
 
 : (%compare-imm) ( src1 src2 -- )
@@ -552,14 +569,14 @@ M: arm.64 immediate-store?
         [ drop f ]
     } cond ;
 
-M: arm.64 return-regs ${
-    { int-regs { RETURN arg2 } }
-    { float-regs { V0 } }
+M: arm.64 return-regs {
+    { int-regs ${ RETURN arg2 } }
+    { float-regs ${ V0 } }
 } ;
 
-M: arm.64 param-regs drop ${
-    { int-regs { arg1 arg2 arg3 arg4 arg5 arg6 arg7 arg8 } }
-    { float-regs { V0 V1 V2 V3 V4 V5 V6 V7 } }
+M: arm.64 param-regs drop {
+    { int-regs ${ arg1 arg2 arg3 arg4 arg5 arg6 arg7 arg8 } }
+    { float-regs ${ V0 V1 V2 V3 V4 V5 V6 V7 } }
 } ;
 
 M: arm.64 return-struct-in-registers? heap-size 2 cells <= ;

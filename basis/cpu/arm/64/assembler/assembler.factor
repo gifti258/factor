@@ -396,8 +396,8 @@ GENERIC: LDRSB ( Rt operand -- )
 GENERIC: LDRSH ( Rt operand -- )
 GENERIC: LDRSW ( Rt operand -- )
 
-GENERIC: STR* ( Rt operand c-type -- )
-GENERIC: LDR* ( Rt operand c-type -- )
+GENERIC#: STR* 1 ( Rt operand c-type -- )
+GENERIC#: LDR* 1 ( Rt operand c-type -- )
 
 GENERIC: MOV ( Rd operand -- )
 
@@ -825,10 +825,13 @@ ERROR: unknown-c-type c-type ;
         { short      [ 1 0 1 1 ] }
         { uint       [ 2 0 0 2 ] }
         { int        [ 2 0 1 2 ] }
+        { int-rep    [ 2 0 1 2 ] }
         { ulonglong  [ 3 0 0 3 ] }
-        { longlong   [ 3 0 1 3 ] }
+        { longlong   [ 3 0 0 3 ] }
+        { tagged-rep [ 3 0 0 3 ] }
         { float      [ 2 1 0 2 ] }
         { double     [ 3 1 0 3 ] }
+        { double-rep [ 3 1 0 3 ] }
         { vector-rep [ 4 1 0 4 ] }
         [ unknown-c-type ]
     } case ] dip
