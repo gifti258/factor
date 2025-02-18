@@ -76,7 +76,7 @@ M: arm.64 %peek loc>operand LDR ;
 M: arm.64 %replace loc>operand STR ;
 
 M:: arm.64 %replace-imm ( imm loc -- )
-    imm 0 = [ XZR loc %replace ] [
+    over 0 = [ [ drop XZR ] dip %replace ] [
         {
             { [ imm not ] [ temp \ f type-number MOV ] }
             { [ imm fixnum? ] [ temp imm tag-fixnum MOV ] }
