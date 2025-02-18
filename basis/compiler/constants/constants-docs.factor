@@ -86,6 +86,9 @@ $nl
     rc-relative-arm-b.cond/ldr
     rc-absolute-arm-ldur
     rc-absolute-arm-cmp
+    rc-absolute-riscv-u/i
+    rc-absolute-riscv-i
+    rc-relative-riscv-i
 }
 "Relocation types:"
 { $subsections

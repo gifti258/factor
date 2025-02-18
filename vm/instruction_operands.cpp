@@ -37,6 +37,14 @@ fixnum instruction_operand::load_value(cell relative_to) {
       return load_value_masked(20, 12, 0);
     case RC_ABSOLUTE_ARM_CMP:
       return load_value_masked(21, 10, 0);
+    case RC_ABSOLUTE_RISCV_U_I:
+      return
+        (*(uint32_t*)(pointer - 2 * sizeof(uint32_t)) & rel_riscv_u_mask) >> 20
+        | (*(uint32_t*)(pointer - sizeof(uint32_t)) & rel_riscv_i_mask);
+    case RC_ABSOLUTE_RISCV_I:
+      return load_value_masked(31, 20, 0);
+    case RC_RELATIVE_RISCV_I:
+      return load_value_masked(31, 20, 0) + relative_to - 4;
     default:
       critical_error("Bad rel class", rel.klass());
       return 0;
@@ -52,6 +60,15 @@ void instruction_operand::store_value_masked(fixnum value, cell mask,
                                              cell lsb, cell scaling) {
   uint32_t* ptr = (uint32_t*)(pointer - sizeof(uint32_t));
   *ptr = (uint32_t)((*ptr & ~mask) | (value >> scaling << lsb & mask));
+}
+
+// Store a value into the immediate bitfields
+// of a RISC-V U-type/I-type instruction pair
+void instruction_operand::store_value_riscv_u_i(fixnum value) {
+  uint32_t* u_type = (uint32_t*)(pointer - 2 * sizeof(uint32_t));
+  *u_type = (uint32_t)((*u_type & ~rel_riscv_u_mask) | (value & rel_riscv_u_mask));
+  uint32_t* i_type = (uint32_t*)(pointer - sizeof(uint32_t));
+  *i_type = (uint32_t)((*i_type & ~rel_riscv_u_mask) | value << 20);
 }
 
 void instruction_operand::store_value(fixnum absolute_value) {
@@ -94,6 +111,15 @@ void instruction_operand::store_value(fixnum absolute_value) {
       FACTOR_ASSERT(absolute_value >= 0);
       FACTOR_ASSERT(absolute_value <= 4095);
       store_value_masked(absolute_value, rel_arm_cmp_mask, 10, 0);
+      break;
+    case RC_ABSOLUTE_RISCV_U_I:
+      store_value_riscv_u_i(absolute_value);
+      break;
+    case RC_ABSOLUTE_RISCV_I:
+      store_value_masked(absolute_value, rel_riscv_i_mask, 20, 0);
+      break;
+    case RC_RELATIVE_RISCV_I:
+      store_value_masked(relative_value + 4, rel_riscv_i_mask, 20, 0);
       break;
     default:
       critical_error("Bad rel class", rel.klass());

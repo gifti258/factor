@@ -50,6 +50,9 @@ CONSTANT: rc-relative-arm-b 3
 CONSTANT: rc-relative-arm-b.cond/ldr 4
 CONSTANT: rc-absolute-arm-ldur 5
 CONSTANT: rc-absolute-arm-cmp 6
+CONSTANT: rc-absolute-riscv-u/i 7
+CONSTANT: rc-absolute-riscv-i 8
+CONSTANT: rc-relative-riscv-i 9
 CONSTANT: rc-absolute-2 10
 CONSTANT: rc-absolute-1 11
 
@@ -75,6 +78,8 @@ CONSTANT: rt-safepoint 15
         $ rc-absolute
         $ rc-absolute-arm-ldur
         $ rc-absolute-arm-cmp
+        $ rc-absolute-riscv-u/i
+        $ rc-absolute-riscv-i
         $ rc-absolute-2
         $ rc-absolute-1
     } member? ;

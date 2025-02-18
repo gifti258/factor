@@ -50,8 +50,14 @@ enum relocation_class {
   RC_ABSOLUTE_ARM_LDUR,
   // absolute value in an ARM CMP instruction
   RC_ABSOLUTE_ARM_CMP,
+  // absolute value in a RISC-V U-type/I-type instruction pair
+  RC_ABSOLUTE_RISCV_U_I,
+  // absolute value in a RISC-V I-type instruction
+  RC_ABSOLUTE_RISCV_I,
+  // relative value in a RISC-V I-type instruction
+  RC_RELATIVE_RISCV_I,
   // absolute address in a 2 byte location
-  RC_ABSOLUTE_2 = 10,
+  RC_ABSOLUTE_2,
   // absolute address in a 1 byte location
   RC_ABSOLUTE_1
 };
@@ -60,6 +66,8 @@ static const cell rel_arm_b_mask = 0x03ffffff;
 static const cell rel_arm_b_cond_ldr_mask = 0x00ffffe0;
 static const cell rel_arm_ldur_mask = 0x001ff000;
 static const cell rel_arm_cmp_mask = 0x003ffc00;
+static const cell rel_riscv_i_mask = 0xfff00000;
+static const cell rel_riscv_u_mask = 0xfffff000;
 
 // code relocation table consists of a table of entries for each fixup
 struct relocation_entry {
@@ -123,6 +131,7 @@ struct instruction_operand {
   code_block* load_code_block();
 
   void store_value_masked(fixnum value, cell mask, cell lsb, cell scaling);
+  void store_value_riscv_u_i(fixnum value);
   void store_value(fixnum value);
 };
 
