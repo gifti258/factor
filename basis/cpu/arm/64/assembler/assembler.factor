@@ -105,6 +105,8 @@ ALIAS: LR           X30
 CONSTANT: XZR T{ zero-register  f 31 64 }
 CONSTANT: SP  T{ stack-register f 31 64 }
 
+ALIAS: fp-temp      V31
+
 
 ERROR: register-width-error reg ;
 : check-32-bit ( reg -- reg ) dup width>> 32 = [ register-width-error ] unless ;
@@ -466,7 +468,7 @@ M: add/sub-immediate SUBS [ check-zero-register  ] 2dip 3 add/sub-imm ;
     repeating-element drop bit-pairs transitions 2 = ;
 
 : make-bits* ( imm imm-width -- imm-bits )
-    [ bits ] keep [ make-bits ] dip f pad-tail ;
+    [ bits ] keep <bits> ;
 
 : (logical-immediate?) ( imm imm-width -- ? )
     [ make-bits* ] keep
@@ -549,32 +551,24 @@ M: integer MOV 0 MOVZ ;
 
 ERROR: immediate-error n ;
 :: UBFIZ ( Rd Rn lsb width -- )
-    ! lsb 0..31/63, width 1..32/64-lsb
     Rn encode-width 5 + :> max-width
     lsb max-width check-unsigned-immediate drop
     width dup 1 max-width 2^ lsb - between? [ immediate-error ] unless drop
-    ! -lsb mod 32/64, width-1
     Rd Rn lsb neg max-width bits width 1 - UBFM ;
 
 M:: integer LSL ( Rd Rn shift -- )
-    ! shift 0..31/63
     Rn encode-width 5 + :> max-width
     shift max-width check-unsigned-immediate drop
-    ! -shift mod 32/64, 31/63-shift
     Rd Rn shift bitnot max-width bits [ 1 + ] keep UBFM ;
 
 M:: integer LSR ( Rd Rn shift -- )
-    ! shift 0..31/63
     Rn encode-width 5 + :> max-width
     shift max-width check-unsigned-immediate drop
-    ! shift, 31/63
     Rd Rn shift max-width on-bits UBFM ;
 
 M:: integer ASR ( Rd Rn shift -- )
-    ! shift 0..31/63
     Rn encode-width 5 + :> max-width
     shift max-width check-unsigned-immediate drop
-    ! shift, 31/63
     Rd Rn shift max-width on-bits SBFM ;
 
 
@@ -587,11 +581,8 @@ M:: integer ASR ( Rd Rn shift -- )
     } encode ;
 
 GENERIC#: B.cond 1 ( label/imm19 cond -- )
-
 M: integer B.cond 0 conditional-branch ;
-
-M: label B.cond
-    [ 0 ] dip B.cond rc-relative-arm-b-cond label-fixup ;
+M: label B.cond [ 0 ] dip B.cond rc-relative-arm-b.cond/ldr label-fixup ;
 
 : BEQ ( imm19 -- ) EQ B.cond ;
 : BNE ( imm19 -- ) NE B.cond ;
@@ -664,8 +655,14 @@ M: label B.cond
         31
     } encode ;
 
-: B  ( imm19 -- ) 0 unconditional-branch-imm ;
-: BL ( imm19 -- ) 1 unconditional-branch-imm ;
+GENERIC: B  ( label/imm19 -- )
+GENERIC: BL ( label/imm19 -- )
+
+M: integer B  0 unconditional-branch-imm ;
+M: integer BL 1 unconditional-branch-imm ;
+
+M: label B  0 B  rc-relative-arm-b label-fixup ;
+M: label BL 0 BL rc-relative-arm-b label-fixup ;
 
 
 ! Pseudo load with immediate literal pool
@@ -706,8 +703,14 @@ M: label B.cond
         24
     } encode ;
 
-: CBZ  ( Rt imm19 -- ) 0 compare-and-branch ;
-: CBNZ ( Rt imm19 -- ) 1 compare-and-branch ;
+GENERIC: CBZ  ( Rt label/imm19 -- )
+GENERIC: CBNZ ( Rt label/imm19 -- )
+
+M: integer CBZ  0 compare-and-branch ;
+M: integer CBNZ 1 compare-and-branch ;
+
+M: label CBZ  [ 0 CBZ  ] dip rc-relative-arm-b.cond/ldr label-fixup ;
+M: label CBNZ [ 0 CBNZ ] dip rc-relative-arm-b.cond/ldr label-fixup ;
 
 
 : test-and-branch ( Rt imm6 imm14 op -- )
@@ -735,7 +738,6 @@ M: label B.cond
     } encode ;
 
 M: integer LDR over [ encode-width ] [ encode-type ] bi load-register-literal ;
-
 M: integer LDRSW 2 0 load-register-literal ;
 
 
@@ -785,6 +787,9 @@ M: integer LDRSW 2 0 load-register-literal ;
         22
     } encode ;
 
+: LDUR ( Rt operand -- )
+    [ dup encode-width** drop ] [ >offset< ] bi* 1 ((load/store-register)) ;
+
 :: (load/store-register) ( Rt operand size VR opc1 sh L -- )
     operand >offset< :> ( Rn offset type )
     offset sh neg shift :> scaled-offset
@@ -825,11 +830,12 @@ ERROR: unknown-c-type c-type ;
         { short      [ 1 0 1 1 ] }
         { uint       [ 2 0 0 2 ] }
         { int        [ 2 0 1 2 ] }
-        { int-rep    [ 2 0 1 2 ] }
         { ulonglong  [ 3 0 0 3 ] }
         { longlong   [ 3 0 0 3 ] }
+        { int-rep    [ 3 0 0 3 ] }
         { tagged-rep [ 3 0 0 3 ] }
         { float      [ 2 1 0 2 ] }
+        { float-rep  [ 2 1 0 2 ] }
         { double     [ 3 1 0 3 ] }
         { double-rep [ 3 1 0 3 ] }
         { vector-rep [ 4 1 0 4 ] }
@@ -842,6 +848,7 @@ ERROR: unknown-c-type c-type ;
 
 M: offset STR* 0 load/store-register* ;
 M: offset LDR* 1 load/store-register* ;
+
 
 : (load/store-register-register) ( Rt operand size VR opc1 L -- )
     [ >offset< [ >operand< ] dip ] 4dip {
@@ -898,10 +905,6 @@ M: register-offset LDR* 1 load/store-register-register* ;
 : LSRV ( Rd Rn Rm -- ) 0b001001 data-processing-2-sources ;
 : ASRV ( Rd Rn Rm -- ) 0b001010 data-processing-2-sources ;
 : RORV ( Rd Rn Rm -- ) 0b001011 data-processing-2-sources ;
-: SMAX ( Rd Rn Rm -- ) 0b011000 data-processing-2-sources ;
-: UMAX ( Rd Rn Rm -- ) 0b011001 data-processing-2-sources ;
-: SMIN ( Rd Rn Rm -- ) 0b011010 data-processing-2-sources ;
-: UMIN ( Rd Rn Rm -- ) 0b011011 data-processing-2-sources ;
 
 M: register LSL LSLV ;
 M: register LSR LSRV ;
@@ -920,9 +923,6 @@ M: register ROR RORV ;
 
 : CLZ ( Rd Rn -- ) 0b000100 data-processing-1-source ;
 : CLS ( Rd Rn -- ) 0b000101 data-processing-1-source ;
-: CTZ ( Rd Rn -- ) 0b000110 data-processing-1-source ;
-: CNT ( Rd Rn -- ) 0b000111 data-processing-1-source ;
-: ABS ( Rd Rn -- ) 0b001000 data-processing-1-source ;
 
 
 : logical-shifted-register ( Rd Rn operand opc N -- )
@@ -1126,7 +1126,7 @@ M: extended-register SUBS 3 add/sub-extended-register ;
         4
     } encode ;
 
-: FCMP ( Rn Rm -- ) 0 fp-compare ;
+: FCMP  ( Rn Rm -- ) 0 fp-compare ;
 : FCMPE ( Rn Rm -- ) 1 fp-compare ;
 
 
@@ -1287,6 +1287,7 @@ M: extended-register SUBS 3 add/sub-extended-register ;
         30
     } encode ;
 
+: CNTv    ( Rd Rn -- )    0 0 0 0b00101 1 simd-2-misc ;
 : ABSv    ( Rd Rn size -- ) 0 0 0b01011 1 simd-2-misc ;
 : SQXTN   ( Rd Rn size -- ) 0 0 0b10100 0 simd-2-misc ;
 : SQXTN2  ( Rd Rn size -- ) 0 0 0b10100 1 simd-2-misc ;

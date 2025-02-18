@@ -153,6 +153,7 @@ big-endian off
     { unwind-native-frames [
         SP arg2 MOV
         VM LDR= rel-vm
+        CTX VM vm-context-offset [+] LDR
         jit-restore-context
         XZR VM vm-fault-flag-offset [+] STR
         temp arg1 quot-entry-point-offset [+] LDR
@@ -293,7 +294,7 @@ big-endian off
 ! Polymorphic inline caches
 
 [
-    obj DS [] LDR f rc-absolute-arm-ldr rel-untagged
+    obj DS [] LDUR f rc-absolute-arm-ldur rel-untagged
 ] PIC-LOAD jit-define
 
 [
@@ -416,14 +417,14 @@ big-endian off
     arg1 VM MOV
     "new_context" LDR=BLR rel-dlsym
 
-    ds-1 DS -8 [post] LDR
     ds-0 DS -8 [post] LDR
+    ds-1 DS -8 [post] LDR
     jit-save-context
     CTX RETURN MOV
     jit-switch-context
-    ds-0 DS 8 [pre] STR
+    ds-1 DS 8 [pre] STR
     ! arg1 is a surprise tool that will be important later
-    arg1 ds-1 MOV
+    arg1 ds-0 MOV
     temp arg1 quot-entry-point-offset [+] LDR
     temp BR ;
 

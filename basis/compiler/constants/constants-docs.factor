@@ -83,9 +83,8 @@ $nl
     rc-absolute-1
     rc-relative
     rc-relative-arm-b
-    rc-relative-arm-b-cond
-    rc-relative-arm-ldr
-    rc-absolute-arm-ldr
+    rc-relative-arm-b.cond/ldr
+    rc-absolute-arm-ldur
     rc-absolute-arm-cmp
 }
 "Relocation types:"

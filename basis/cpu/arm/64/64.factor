@@ -1,38 +1,31 @@
 ! Copyright (C) 2023 Giftpflanze.
 ! See https://factorcode.org/license.txt for BSD license.
 USING: accessors alien alien.c-types alien.data assocs
-classes.struct combinators compiler.cfg compiler.cfg.comparisons
-compiler.cfg.instructions compiler.cfg.intrinsics
-compiler.cfg.registers compiler.cfg.stack-frame
-compiler.codegen.gc-maps compiler.codegen.labels
-compiler.codegen.relocation compiler.constants cpu.architecture
-cpu.arm.64.assembler generalizations kernel layouts literals
-math memory namespaces sequences system vm ;
+byte-arrays classes.algebra classes.struct combinators
+compiler.cfg compiler.cfg.comparisons compiler.cfg.instructions
+compiler.cfg.intrinsics compiler.cfg.registers
+compiler.cfg.stack-frame compiler.codegen.gc-maps
+compiler.codegen.labels compiler.codegen.relocation
+compiler.constants cpu.architecture cpu.arm.64.assembler
+generalizations kernel layouts literals math memory namespaces
+sequences system vm ;
 FROM: alien.c-types => float double heap-size ;
 FROM: cpu.arm.64.assembler => B ;
 IN: cpu.arm.64
 
-ERROR: not-implemented word ;
-
 M: arm.64 machine-registers {
-    {
-        int-regs ${
-            X0  X1  X2  X3  X4  X5  X6  X7  X8
-            X10 X11 X12 X13 X14 X15
-        }
-    } {
-        float-regs ${
-            V0  V1  V2  V3  V4  V5  V6  V7
-            V8  V9  V10 V11 V12 V13 V14 V15
-            V16 V17 V18 V19 V20 V21 V22 V23
-            V24 V25 V26 V27 V28 V29 V30 V31
-        }
-    }
+    { int-regs ${
+        X0  X1  X2  X3  X4  X5  X6  X7  X8
+        X10 X11 X12 X13 X14 X15
+    } }
+    { float-regs ${
+        V0  V1  V2  V3  V4  V5  V6  V7
+        V16 V17 V18 V19 V20 V21 V22 V23
+        V24 V25 V26 V27 V28 V29 V30
+    } }
 } ;
 
 M: arm.64 frame-reg FP ;
-
-! M: arm.64 vm-stack-space 0 ;
 
 M: arm.64 complex-addressing? t ;
 
@@ -57,10 +50,9 @@ M: arm.64 %load-reference
     [ \ f type-number MOV ] if* ;
 
 : copy-memory* ( dst src rep -- )
-    over offset? [ LDR* ] [ swapd STR* ] if ;
+    pick offset? [ swapd STR* ] [ LDR* ] if ;
 
 GENERIC: copy-register* ( dst src rep -- )
-
 M: int-rep copy-register* drop MOV ;
 M: tagged-rep copy-register* drop MOV ;
 M: vector-rep copy-register* drop FMOV ;
@@ -72,7 +64,7 @@ M: arm.64 %load-double double <ref> double-rep %load-vector ;
 
 M:: arm.64 %load-vector ( DST val rep -- )
     DST 0 rep copy-memory*
-    val rc-relative-arm-ldr rel-binary-literal ;
+    val rc-relative-arm-b.cond/ldr rel-binary-literal ;
 
 : reg-stack ( n reg -- operand ) swap cells neg [+] ;
 
@@ -82,13 +74,17 @@ M: rs-loc loc>operand n>> RS reg-stack ;
 
 M: arm.64 %peek loc>operand LDR ;
 M: arm.64 %replace loc>operand STR ;
+
 M:: arm.64 %replace-imm ( imm loc -- )
-    {
-        { [ imm not ] [ temp \ f type-number MOV ] }
-        { [ imm fixnum? ] [ temp imm tag-fixnum MOV ] }
-        [ imm temp (LDR=) rel-literal ]
-    } cond
-    temp loc loc>operand STR ;
+    imm 0 = [ XZR loc %replace ] [
+        {
+            { [ imm not ] [ temp \ f type-number MOV ] }
+            { [ imm fixnum? ] [ temp imm tag-fixnum MOV ] }
+            [ imm temp (LDR=) rel-literal ]
+        } cond
+        temp loc loc>operand STR
+    ] if ;
+
 M: arm.64 %clear [ 297 ] dip %replace-imm ;
 
 M: arm.64 %inc
@@ -103,15 +99,17 @@ M: arm.64 %jump
     PIC-TAIL 5 insns ADR
     (LDR=BR) rel-word-pic-tail ;
 
-M: arm.64 %jump-label
-    0 B rc-relative-arm-b label-fixup ;
+M: arm.64 %jump-label 0 B rc-relative-arm-b label-fixup ;
 
 M: arm.64 %return RET ;
 
-M:: arm.64 %dispatch ( SRC TEMP -- ) \ %dispatch not-implemented ;
+M:: arm.64 %dispatch ( SRC TEMP -- )
+    temp 3 insns ADR
+    temp dup SRC [+] LDR
+    temp BR ;
 
 :: (%slot) ( OBJ SLOT scale tag -- register operand )
-    temp OBJ tag neg ADD
+    temp OBJ tag dup neg? [ neg ADD ] [ SUB ] if
     temp SLOT scale <LSL*> ; inline
 
 M: arm.64 %slot (%slot) [+] LDR ;
@@ -119,18 +117,17 @@ M: arm.64 %slot-imm slot-offset [+] LDR ;
 M: arm.64 %set-slot (%slot) [+] STR ;
 M: arm.64 %set-slot-imm slot-offset [+] STR ;
 
-:: (%boolean) ( DST TEMP -- )
-    DST \ f type-number MOV
-    t TEMP (LDR=) rel-literal ;
-
 M: arm.64 %add     ADDS ;
 M: arm.64 %add-imm ADDS ;
 M: arm.64 %sub     SUBS ;
 M: arm.64 %sub-imm SUBS ;
 M: arm.64 %mul     MUL ;
-M: arm.64 %mul-imm
-    [ temp XZR ] 2dip ADD
-    temp MUL ;
+
+M:: arm.64 %mul-imm ( DST SRC1 src2 -- )
+    temp XZR MOV
+    temp dup src2 ADD
+    DST SRC1 temp MUL ;
+
 M: arm.64 %and     AND ;
 M: arm.64 %and-imm AND ;
 M: arm.64 %or      ORR ;
@@ -143,15 +140,33 @@ M: arm.64 %shr     LSR ;
 M: arm.64 %shr-imm LSR ;
 M: arm.64 %sar     ASR ;
 M: arm.64 %sar-imm ASR ;
-M: arm.64 %min    SMIN ;
-M: arm.64 %max    SMAX ;
-M: arm.64 %not     MVN ;
-M: arm.64 %neg     NEG ;
-M: arm.64 %log2
-    dupd CLZ
-    dup dup 64 SUB
-    dup MVN ;
-M: arm.64 %bit-count CNT ;
+
+M:: arm.64 %min ( DST SRC1 SRC2 -- )
+    SRC1 SRC2 CMP
+    DST SRC1 SRC2 LE CSEL ;
+
+M:: arm.64 %max ( DST SRC1 SRC2 -- )
+    SRC1 SRC2 CMP
+    DST SRC1 SRC2 GE CSEL ;
+
+M: arm.64 %not MVN ;
+M: arm.64 %neg NEG ;
+
+M:: arm.64 %log2 ( DST SRC -- )
+    DST SRC CLZ
+    DST DST 64 SUB
+    DST DST MVN ;
+
+M:: arm.64 %bit-count ( DST SRC -- )
+    fp-temp SRC FMOV
+    fp-temp dup CNTv
+    fp-temp dup 0 ADDV
+    DST fp-temp FMOV ;
+
+:: (%boolean) ( DST TEMP -- )
+    DST \ f type-number MOV
+    t TEMP (LDR=) rel-literal ;
+
 M:: arm.64 %bit-test ( DST SRC1 SRC2 TEMP -- )
     DST TEMP (%boolean)
     SRC1 SRC2 2 insns TBZ
@@ -176,9 +191,17 @@ M: arm.64 %copy ( dst src rep -- )
         { cc/o [ BVC ] }
     } case ; inline
 
-M: arm.64 %fixnum-add [ ADD ] fixnum-overflow ;
-M: arm.64 %fixnum-sub [ SUB ] fixnum-overflow ;
-M: arm.64 %fixnum-mul [ MUL ] fixnum-overflow ;
+M: arm.64 %fixnum-add [ ADDS ] fixnum-overflow ;
+M: arm.64 %fixnum-sub [ SUBS ] fixnum-overflow ;
+
+M:: arm.64 %fixnum-mul ( label dst src1 src2 cc -- )
+    temp src1 src2 SMULH
+    dst src1 src2 MUL
+    temp dst 63 <ASR> CMP
+    label cc {
+        { cc-o [ BNE ] }
+        { cc/o [ BEQ ] }
+    } case ;
 
 M: arm.64 %add-float FADDs ;
 M: arm.64 %sub-float FSUBs ;
@@ -231,22 +254,27 @@ M: arm.64 %float>integer FCVTZSsi ;
 
 M: arm.64 %zero-vector drop dup dup EORv ;
 M: arm.64 %fill-vector drop dup dup BICv ;
+
 M:: arm.64 %gather-vector-2 ( DST SRC1 SRC2 rep -- )
     DST SRC1 0 0 rep INSelt
     DST SRC2 1 0 rep INSelt ;
+
 M:: arm.64 %gather-int-vector-2 ( DST SRC1 SRC2 rep -- )
     DST SRC1 0 rep INSgen
     DST SRC2 1 rep INSgen ;
+
 M:: arm.64 %gather-vector-4 ( DST SRC1 SRC2 SRC3 SRC4 rep -- )
     DST SRC1 0 0 rep INSelt
     DST SRC1 1 0 rep INSelt
     DST SRC1 2 0 rep INSelt
     DST SRC1 3 0 rep INSelt ;
+
 M:: arm.64 %gather-int-vector-4 ( DST SRC1 SRC2 SRC3 SRC4 rep -- )
     DST SRC1 0 rep INSgen
     DST SRC2 1 rep INSgen
     DST SRC3 2 rep INSgen
     DST SRC4 3 rep INSgen ;
+
 M: arm.64 %select-vector UMOV ;
 M: arm.64 %shuffle-vector drop TBL ;
 M: arm.64 %shuffle-vector-imm 4drop ;
@@ -261,12 +289,14 @@ M: arm.64 %unpack-vector-head SXTL ;
 M: arm.64 %unpack-vector-tail SHLL ;
 M: arm.64 %integer>float-vector >spec SCVTFvi ;
 M: arm.64 %float>integer-vector >spec* FCVTZSvi ;
+
 M: arm.64 %compare-vector
     {
         { cc=  [ [ CMEQ ] [ FCMEQ ] integer/float ] }
         { cc>  [ [ CMHI ] [ CMGT ] [ FCMGT ] signed/unsigned/float ] }
         { cc>= [ [ CMHS ] [ CMGE ] [ FCMGE ] signed/unsigned/float ] }
     } case ;
+
 M: arm.64 %add-vector [ ADDv ] [ FADDv ] integer/float ;
 M: arm.64 %saturated-add-vector [ SQADD ] [ UQADD ] signed/unsigned ;
 M: arm.64 %sub-vector [ SUBv ] [ FSUBv ] integer/float ;
@@ -290,7 +320,6 @@ M: arm.64 %shl-vector [ SSHL ] [ USHL ] signed/unsigned ;
 M: arm.64 %shr-vector [ 2nipd dupd >spec NEGv ] 4keep %shl-vector ;
 M: arm.64 %shl-vector-imm >spec SHL ;
 M: arm.64 %shr-vector-imm [ SSHR ] [ USHR ] signed/unsigned ;
-
 M: arm.64 %integer>scalar drop FMOV ;
 M: arm.64 %scalar>integer drop FMOV ;
 M: arm.64 %vector>scalar %copy ;
@@ -334,6 +363,7 @@ M: arm.64 %unpack-vector-tail-reps vector-reps ;
 M: arm.64 %integer>float-vector-reps { int-4-rep longlong-2-rep } ;
 M: arm.64 %float>integer-vector-reps float-vector-reps ;
 M: arm.64 %compare-vector-reps { cc< cc<= cc> cc>= cc= cc<> } member? vector-reps and ;
+
 M: arm.64 %compare-vector-ccs
     nip {
         { cc<  [ { { cc>  t } } f ] }
@@ -343,6 +373,7 @@ M: arm.64 %compare-vector-ccs
         { cc=  [ { { cc=  f } } f ] }
         { cc<> [ { { cc=  f } } t ] }
     } case ;
+
 M: arm.64 %move-vector-mask-reps f ;
 M: arm.64 %add-vector-reps vector-reps ;
 M: arm.64 %saturated-add-vector-reps int-vector-reps ;
@@ -389,8 +420,84 @@ M:: arm.64 %unbox-any-c-ptr ( DST SRC -- )
     DST SRC alien-offset [+] LDR
     end resolve-label ;
 
-M: arm.64 %box-alien \ %box-alien not-implemented ;
-M: arm.64 %box-displaced-alien \ %box-displaced-alien not-implemented ;
+: alien@ ( reg n -- operand ) cells alien type-number - [+] ;
+
+M:: arm.64 %box-alien ( DST SRC TEMP -- )
+    <label> :> end
+    DST \ f type-number MOV
+    SRC end CBZ
+    DST 5 cells alien TEMP %allot
+    temp \ f type-number MOV
+    temp DST 1 alien@ STR ! base
+    temp DST 2 alien@ STR ! expired
+    SRC  DST 3 alien@ STR ! displacement
+    SRC  DST 4 alien@ STR ! address
+    end resolve-label ;
+
+:: %box-displaced-alien/f ( DST DISP -- )
+    temp \ f type-number MOV
+    temp DST 1 alien@ STR
+    DISP DST 3 alien@ STR
+    DISP DST 4 alien@ STR ;
+
+:: %box-displaced-alien/alien ( DST DISP BASE TEMP -- )
+    ! set new alien's base to base.base
+    temp BASE 1 alien@ LDR
+    temp DST  1 alien@ STR
+    ! compute displacement
+    temp BASE 3 alien@ LDR
+    temp dup DISP ADD
+    temp DST  3 alien@ STR
+    ! compute address
+    temp BASE 4 alien@ LDR
+    temp dup DISP ADD
+    temp DST  4 alien@ STR ;
+
+:: %box-displaced-alien/byte-array ( DST DISP BASE TEMP -- )
+    BASE DST 1 alien@ STR
+    DISP DST 3 alien@ STR
+    temp BASE DISP ADD
+    temp dup byte-array-offset ADD
+    temp DST 4 alien@ STR ;
+
+:: %box-displaced-alien/dynamic ( DST DISP BASE TEMP end -- )
+    <label> :> not-f
+    <label> :> not-alien
+    ! check base type
+    temp BASE tag-mask get AND
+    ! is base f?
+    temp \ f type-number CMP
+    not-f BNE
+    ! fill in new object
+    DST DISP %box-displaced-alien/f
+    end B
+    not-f resolve-label
+    ! is base an alien?
+    temp alien type-number CMP
+    not-alien BNE
+    DST DISP BASE TEMP %box-displaced-alien/alien
+    end B
+    ! base has to be a byte array now
+    not-alien resolve-label
+    DST DISP BASE TEMP %box-displaced-alien/byte-array ;
+
+M:: arm.64 %box-displaced-alien ( DST DISP BASE TEMP base-class -- )
+    <label> :> end
+    ! if displacement is zero, return the base
+    DST BASE MOV
+    DISP end CBZ
+    ! allocate new object
+    DST 5 cells alien TEMP %allot
+    ! set expired to f
+    temp \ f type-number MOV
+    temp DST 2 alien@ STR
+    DST DISP BASE TEMP {
+        { [ base-class \ f class<= ] [ 2drop %box-displaced-alien/f ] }
+        { [ base-class \ alien class<= ] [ %box-displaced-alien/alien ] }
+        { [ base-class \ byte-array class<= ] [ %box-displaced-alien/byte-array ] }
+        [ end %box-displaced-alien/dynamic ]
+    } cond
+    end resolve-label ;
 
 M: arm.64 %convert-integer [ [ 0 ] dip heap-size 1 - ] [ c-type-signed ] bi [ SBFM ] [ UBFM ] if ;
 
@@ -398,16 +505,17 @@ M: arm.64 %convert-integer [ [ 0 ] dip heap-size 1 - ] [ c-type-signed ] bi [ SB
     temp BASE offset ADD
     temp DISP scale <LSL*> [+] ;
 
-M: arm.64 %load-memory or [ (%memory) ] dip copy-memory* ;
-M: arm.64 %load-memory-imm or [ [+] ] dip copy-memory* ;
-M: arm.64 %store-memory or [ (%memory) swap ] dip copy-memory* ;
-M: arm.64 %store-memory-imm or [ [+] swap ] dip copy-memory* ;
+M: arm.64 %load-memory swap or [ (%memory) ] dip copy-memory* ;
+M: arm.64 %load-memory-imm swap or [ [+] ] dip copy-memory* ;
+M: arm.64 %store-memory swap or [ (%memory) swap ] dip copy-memory* ;
+M: arm.64 %store-memory-imm swap or [ [+] swap ] dip copy-memory* ;
 
-M: arm.64 %alien-global [ 0 MOV ] 2dip rc-absolute-cell rel-dlsym ;
-M: arm.64 %vm-field [ VM ] dip [+] LDR ;
+M: arm.64 %alien-global [ XZR MOV ] 2dip rc-absolute-cell rel-dlsym ;
+
+M: arm.64 %vm-field     [ VM ] dip [+] LDR ;
 M: arm.64 %set-vm-field [ VM ] dip [+] STR ;
 
-M:: arm.64 %allot ( DST size class NURSERY-PTR -- )
+M:: arm.64 %allot ( DST size class TEMP -- )
     VM "nursery" vm offset-of [+] :> operand
     DST operand LDR
     temp DST size data-alignment get align ADD
@@ -441,6 +549,7 @@ M:: arm.64 %check-nursery-branch ( label size cc TEMP1 TEMP2 -- )
         { cc<= [ label BLE ] }
         { cc/<= [ label BGT ] }
     } case ;
+
 M: arm.64 %call-gc \ minor-gc %call gc-map-here ;
 
 M:: arm.64 %prologue ( n -- )
@@ -451,7 +560,7 @@ M:: arm.64 %epilogue ( n -- )
     FP LR SP n [post] LDP ;
 
 M: arm.64 %safepoint
-    XZR SAFEPOINT [] STR ;
+    SAFEPOINT dup [] STR ;
 
 M: arm.64 test-instruction? t ;
 
@@ -582,18 +691,12 @@ M: arm.64 param-regs drop {
 M: arm.64 return-struct-in-registers? heap-size 2 cells <= ;
 
 M: arm.64 value-struct? drop t ;
-
 M: arm.64 dummy-stack-params? f ;
-
 M: arm.64 dummy-int-params? f ;
 M: arm.64 dummy-fp-params? f ;
-
 M: arm.64 long-long-on-stack? f ;
-
 M: arm.64 long-long-odd-register? f ;
-
 M: arm.64 float-right-align-on-stack? f ;
-
 M: arm.64 struct-return-on-stack? f ;
 
 : return-reg ( rep -- reg ) reg-class-of return-regs at first ;
@@ -648,12 +751,10 @@ M:: arm.64 %alien-assembly ( varargs? reg-inputs stack-inputs reg-outputs dead-o
     reg-inputs [ first3 %store-reg-param ] each
     varargs? [ reg-inputs %prepare-var-args ] when
     quot call( -- )
-    ! cleanup %cleanup
     reg-outputs [ first3 %load-reg-param ] each ;
 
 :: next-stack@ ( n -- operand )
     FP n 2 cells + reserved-stack-space + [+] ;
-    ! [ frame-reg ] dip 2 cells + reserved-stack-space + [+] ;
 
 :: %load-stack-param ( vreg rep n -- )
     rep return-reg n next-stack@ rep %copy

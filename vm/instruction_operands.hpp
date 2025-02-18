@@ -44,12 +44,10 @@ enum relocation_class {
   RC_RELATIVE,
   // Relative address in an ARM B/BL instruction
   RC_RELATIVE_ARM_B,
-  // Relative address in an ARM B.cond instruction
-  RC_RELATIVE_ARM_B_COND,
-  // relative address in an ARM LDR (literal) instruction
-  RC_RELATIVE_ARM_LDR,
-  // absolute offset in an ARM LDR (literal) instruction
-  RC_ABSOLUTE_ARM_LDR,
+  // Relative address in an ARM B.cond or LDR (literal) instruction
+  RC_RELATIVE_ARM_B_COND_LDR,
+  // absolute offset in an ARM LDUR instruction
+  RC_ABSOLUTE_ARM_LDUR,
   // absolute value in an ARM CMP instruction
   RC_ABSOLUTE_ARM_CMP,
   // absolute address in a 2 byte location
@@ -59,8 +57,9 @@ enum relocation_class {
 };
 
 static const cell rel_arm_b_mask = 0x03ffffff;
-static const cell rel_arm_b_cond_mask = 0x00ffffe0;
-static const cell rel_arm_ldr_cmp_mask = 0x003ffc00;
+static const cell rel_arm_b_cond_ldr_mask = 0x00ffffe0;
+static const cell rel_arm_ldur_mask = 0x001ff000;
+static const cell rel_arm_cmp_mask = 0x003ffc00;
 
 // code relocation table consists of a table of entries for each fixup
 struct relocation_entry {
@@ -119,11 +118,11 @@ struct instruction_operand {
   instruction_operand(relocation_entry rel, code_block* compiled,
                       cell index);
 
-  fixnum load_value_masked(cell mask, cell preshift, cell bits, cell postshift);
+  fixnum load_value_masked(cell msb, cell lsb, cell scaling);
   fixnum load_value(cell relative_to);
   code_block* load_code_block();
 
-  void store_value_masked(fixnum value, cell mask, cell shift1, cell shift2);
+  void store_value_masked(fixnum value, cell mask, cell lsb, cell scaling);
   void store_value(fixnum value);
 };
 

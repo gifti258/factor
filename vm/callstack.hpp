@@ -55,15 +55,14 @@ void factor_vm::iterate_callstack(context* ctx, Iterator& iterator,
     cell addr = *(cell*)(top + FRAME_RETURN_ADDRESS);
     FACTOR_ASSERT(addr != 0);
 
-    code_block* owner = code->code_block_for_address(addr);
-#ifdef FACTOR_ARM64
-    (void)fixup;
-    cell size = *(cell*)top - top;
-#else
     // Only the address is valid, if the code heap has been compacted,
     // owner might not point to a real code block.
+    code_block* owner = code->code_block_for_address(addr);
     code_block* fixed_owner = fixup.translate_code(owner);
-
+#ifdef FACTOR_ARM64
+    (void)fixed_owner;
+    cell size = *(cell*)top - top;
+#else
     cell delta = addr - (cell)owner - sizeof(code_block);
     cell natural_frame_size = fixed_owner->stack_frame_size();
     cell size = LEAF_FRAME_SIZE;
