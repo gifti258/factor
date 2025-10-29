@@ -12,7 +12,7 @@ IN: bootstrap.assembler.arm
 big-endian off
 
 8 \ cell set
-: stack-frame-size ( -- n ) 8 bootstrap-cells ; inline
+: stack-frame-size ( -- n ) 2 bootstrap-cells ; inline
 
 [
     FP LR SP stack-frame-size neg [pre] STP
@@ -20,11 +20,9 @@ big-endian off
 ] JIT-PROLOG jit-define
 
 : jit-save-context ( -- )
-    ! The reason for -16 I think is because we are anticipating a CALL
-    ! instruction. After the call instruction, the contexts frame_top
-    ! will point to the origin jump address.
-    temp SP MOV
-    ! temp SP 16 SUB
+    temp 0 ADR
+    FP temp SP -16 [+] STP
+    temp SP 16 SUB
     temp CTX context-callstack-top-offset [+] STR
     DS CTX context-datastack-offset [+] STR
     RS CTX context-retainstack-offset [+] STR ;
@@ -262,7 +260,7 @@ big-endian off
     ! Load Factor stack pointers
     temp CTX context-callstack-bottom-offset [+] LDR
     SP temp MOV
-    FP SP MOV
+    FP XZR MOV
 
     jit-update-teb
 
@@ -385,8 +383,9 @@ big-endian off
 : jit-switch-context ( -- )
     ! Push a bogus return address so the GC can track this frame back
     ! to the owner
-    ! temp 0 ADR
-    ! FP temp SP -16 [pre] STP
+    temp 0 ADR
+    FP temp SP -16 [pre] STP
+    FP SP MOV
 
     ! Make the new context the current one
     CTX VM vm-context-offset [+] STR
@@ -394,6 +393,7 @@ big-endian off
     ! Load new stack pointer
     temp CTX context-callstack-top-offset [+] LDR
     SP temp MOV
+    FP SP MOV
 
     ! Load new ds, rs registers
     jit-restore-context
@@ -407,7 +407,8 @@ big-endian off
     jit-save-context
     CTX ds-0 MOV
     jit-switch-context
-    ! SP dup 16 ADD
+    SP dup 16 ADD
+    FP SP MOV
     ds-1 DS 8 [pre] STR ;
 
 : jit-delete-current-context ( -- )
@@ -707,7 +708,8 @@ big-endian off
         *top top [] STR
         top *top MOV
         -5 insns B
-        FP LR SP stack-frame-size [post] LDP
+        FP LR SP [] LDP
+        SP FP MOV
         RET
     ] }
 } define-sub-primitives

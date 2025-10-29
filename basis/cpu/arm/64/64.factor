@@ -1,12 +1,12 @@
 ! Copyright (C) 2025 Giftpflanze.
 ! See https://factorcode.org/license.txt for BSD license.
-USING: accessors alien assocs classes.struct combinators
-compiler.cfg compiler.cfg.comparisons compiler.cfg.instructions
-compiler.cfg.registers compiler.cfg.stack-frame
-compiler.codegen.gc-maps compiler.codegen.labels
-compiler.codegen.relocation compiler.constants cpu.architecture
-cpu.arm.64.assembler kernel layouts literals math memory
-namespaces sequences system vm ;
+USING: accessors alien alien.c-types alien.data assocs
+classes.struct combinators compiler.cfg compiler.cfg.comparisons
+compiler.cfg.instructions compiler.cfg.registers
+compiler.cfg.stack-frame compiler.codegen.gc-maps
+compiler.codegen.labels compiler.codegen.relocation
+compiler.constants cpu.architecture cpu.arm.64.assembler kernel
+layouts literals math memory namespaces sequences system vm ;
 FROM: cpu.arm.64.assembler => B ;
 IN: cpu.arm.64
 
@@ -159,6 +159,12 @@ M: arm.64 %copy ( dst src rep -- )
         { [
             3dup [ register? ] [ offset? ] [ 64-gr-rep? ] tri* and and
         ] [ drop LDR ] }
+        { [
+            3dup [ offset? ] [ register? ] [ double-rep? ] tri* and and
+        ] [ drop swap STR ] }
+        { [
+            3dup [ register? ] [ offset? ] [ double-rep? ] tri* and and
+        ] [ drop LDR ] }
         [ %copy-not-implemented ]
     } cond ;
 
@@ -190,7 +196,8 @@ M: arm.64 %vm-field ( DST offset -- )
 M: arm.64 %c-invoke ( symbols dll gc-map -- )
     [ (LDR=BLR) rel-dlsym ] dip gc-map-here ;
 
-: return-reg ( rep -- reg ) reg-class-of return-regs at first ;
+: return-reg ( rep -- reg )
+    reg-class-of return-regs at first ;
 
 :: %store-stack-param ( vreg rep n -- )
     rep return-reg vreg rep %copy
@@ -313,3 +320,36 @@ M:: arm.64 %box ( DST SRC func rep gc-map -- )
     rep int-rep? arg2 arg1 ? VM MOV
     func f gc-map %c-invoke
     DST int-rep %load-return ;
+
+M: arm.64 %sar-imm ( DST SRC1 src2 -- )
+    ASR ;
+
+M:: arm.64 %dispatch ( SRC TEMP -- )
+    temp 3 insns ADR
+    temp dup SRC [+] LDR
+    temp BR ;
+
+M: arm.64 dummy-int-params? ( -- ? )
+    f ;
+
+M: arm.64 %load-double ( DST val -- )
+    [ 0 LDR ] [
+        double <ref>
+        rc-relative-arm-b.cond/ldr rel-binary-literal
+    ] bi* ;
+
+M: arm.64 %load-memory-imm ( DST BASE offset rep c-type -- )
+    2drop [+] LDR ;
+
+M: arm.64 %store-memory-imm ( SRC BASE offset rep c-type -- )
+    2drop [+] STR ;
+
+M: arm.64 gc-root-offset ( spill-slot -- n )
+    n>> spill-offset 2 cells + cell /i ;
+
+M: arm.64 %shl-imm ( DST SRC1 src2 -- )
+    LSL ;
+
+M: arm.64 %convert-integer ( DST SRC c-type -- )
+    [ [ 0 ] dip heap-size 8 * ] [ c-type-signed ] bi
+    [ SBFX ] [ UBFX ] if ;

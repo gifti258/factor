@@ -286,7 +286,7 @@ HELP: attempt-all
 } ;
 
 HELP: return
-{ $description "Returns early from a quotation by resuming the continuation reified by " { $link with-return } " ; execution is continued starting immediately after " { $link with-return } "." } ;
+{ $description "Returns early from a quotation by resuming the continuation reified by " { $link with-return } "; execution is continued starting immediately after " { $link with-return } "." } ;
 
 HELP: with-return
 { $values

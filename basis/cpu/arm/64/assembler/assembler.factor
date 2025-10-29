@@ -144,6 +144,7 @@ ERROR: register-type-error reg ;
 : W/SP ( Wn -- n ) check-32-bit check-general-register check-stack-register n>> ;
 : X/SP ( Xn -- n ) check-64-bit check-general-register check-stack-register n>> ;
 : V    ( Vn -- n )              check-vector-register                       n>> ;
+:  /ZR ( Rn -- n )                                     check-zero-register  n>> ;
 
 : >zero-register ( reg -- new-reg ) width>> 31 swap zero-register boa ;
 : insert-zero-register ( Rn operand -- ZR Rn operand ) [ [ >zero-register ] keep ] dip ;
@@ -154,9 +155,10 @@ GENERIC: encode-type ( reg -- n )
 
 M: general-register encode-type drop 0 ;
 M:      fp-register encode-type drop 1 ;
+M:  vector-register encode-type drop 1 ;
 
 
-GENERIC: encode-width ( reg -- sf/opc ) ! LDRl
+GENERIC: encode-width ( reg -- sf/opc )
 
 M: general-register encode-width
     width>> {
@@ -588,21 +590,28 @@ PRIVATE>
 :  BFM ( Rd Rn immr imms -- ) 1 bitfield ;
 : UBFM ( Rd Rn immr imms -- ) 2 bitfield ;
 
+: SBFX ( Rd Rn lsb width -- ) over + 1 - SBFM ;
+: UBFX ( Rd Rn lsb width -- ) over + 1 - UBFM ;
+
 <PRIVATE
 : ?max-width ( Rn n -- Rn n max-width )
     over encode-width 5 + [ check-unsigned-immediate ] keep ;
 PRIVATE>
 
-: UBFIZ ( Rd Rn lsb width -- )
-    [ ?max-width ] dip 3dup spin [ 1 ] [ 2^ ] [ - ] tri* between?
-    [ immediate-error ] unless [ neg ] [ bits ] [ 1 - ] tri* UBFM ;
+M: integer ASR ( Rd Rn shift -- ) ?max-width on-bits SBFM ;
+M: integer LSR ( Rd Rn shift -- ) ?max-width on-bits UBFM ;
 
 M: integer LSL ( Rd Rn shift -- )
     ?max-width [ bitnot ] [ bits ] bi* [ 1 + ] keep UBFM ;
 
-M: integer LSR ( Rd Rn shift -- ) ?max-width on-bits UBFM ;
-M: integer ASR ( Rd Rn shift -- ) ?max-width on-bits SBFM ;
+<PRIVATE
+: (BFIZ) ( Rn lsb width -- Rn immr imms )
+    [ ?max-width ] dip 3dup spin [ 1 ] [ 2^ ] [ - ] tri* between?
+    [ immediate-error ] unless [ neg ] [ bits ] [ 1 - ] tri* ;
+PRIVATE>
 
+: UBFIZ ( Rd Rn lsb width -- ) (BFIZ) UBFM ;
+: SBFIZ ( Rd Rn lsb width -- ) (BFIZ) SBFM ;
 
 <PRIVATE
 : conditional-branch ( imm21 cond op -- )
@@ -782,7 +791,7 @@ PRIVATE>
 : load-register-literal ( Rt imm19 opc VR -- )
     [ 2 ?>> 19 check-signed-immediate ] 2dip {
         { 0b011 27 }
-        { R/ZR 0 }
+        { /ZR 0 }
         5
         30
         26

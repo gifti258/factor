@@ -64,7 +64,7 @@ inline static bool tail_call_site_p(cell return_address) {
 
 // Must match the stack-frame-size constant in
 // basis/bootstrap/assembler/arm.64.factor
-static const unsigned JIT_FRAME_SIZE = 64;
+static const unsigned JIT_FRAME_SIZE = 16;
 
 // Must match the calculation in word jit-signal-handler-prolog in
 // basis/bootstrap/assembler/arm.64.factor

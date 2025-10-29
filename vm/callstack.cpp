@@ -53,9 +53,8 @@ cell factor_vm::capture_callstack(context* target_ctx) {
   // moving the callstack through memory. They will be converted back
   // in set-callstack.
   cell dst = stack->top();
-  while (top < bottom) {
+  while (*reinterpret_cast<cell*>(top) != 0) {
     *reinterpret_cast<cell*>(dst) = *reinterpret_cast<cell*>(top) - top;
-    FACTOR_ASSERT(*reinterpret_cast<cell*>(top) > top);
     top = *reinterpret_cast<cell*>(top);
     dst += *reinterpret_cast<cell*>(dst);
   }
