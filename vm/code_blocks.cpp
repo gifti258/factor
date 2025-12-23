@@ -179,8 +179,10 @@ cell factor_vm::lookup_external_address(relocation_type rel_type,
       return (cell)&factor::inline_cache_miss;
     case RT_SAFEPOINT:
       return code->safepoint_page;
+#ifdef FACTOR_ARM64
     case RT_TRAMPOLINE:
       return (cell)&factor::trampoline;
+#endif
     default:
       return -1;
   }
