@@ -8,9 +8,20 @@ constexpr cell seh_area_size = 1024;
 constexpr cell seh_area_size = 0;
 #endif
 
+#if defined(__APPLE__) && defined(FACTOR_ARM64)
+#define JIT_WRITABLE pthread_jit_write_protect_np(0);
+#define JIT_EXECUTABLE pthread_jit_write_protect_np(1);
+#else
+#define JIT_WRITABLE
+#define JIT_EXECUTABLE
+#endif
+
 struct code_heap {
   // The actual memory area
   std::unique_ptr<segment> seg;
+
+  // Segment for the safepoint page, can't be executable on ARM64 MacOS
+  std::unique_ptr<segment> safepoint_seg;
 
   // Memory area reserved for safepoint guard page
   cell safepoint_page;

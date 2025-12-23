@@ -436,8 +436,10 @@ double factor_vm::to_double(cell value) { return untag_float_check(value); }
 // overflow, they call these functions.
 // Allocates memory
 inline void factor_vm::overflow_fixnum_add(fixnum x, fixnum y) {
+  JIT_WRITABLE
   ctx->replace(
       tag<bignum>(fixnum_to_bignum(untag_fixnum(x) + untag_fixnum(y))));
+  JIT_EXECUTABLE
 }
 
 VM_C_API void overflow_fixnum_add(fixnum x, fixnum y, factor_vm* parent) {
@@ -446,8 +448,10 @@ VM_C_API void overflow_fixnum_add(fixnum x, fixnum y, factor_vm* parent) {
 
 // Allocates memory
 inline void factor_vm::overflow_fixnum_subtract(fixnum x, fixnum y) {
+  JIT_WRITABLE
   ctx->replace(
       tag<bignum>(fixnum_to_bignum(untag_fixnum(x) - untag_fixnum(y))));
+  JIT_EXECUTABLE
 }
 
 VM_C_API void overflow_fixnum_subtract(fixnum x, fixnum y, factor_vm* parent) {
@@ -456,10 +460,12 @@ VM_C_API void overflow_fixnum_subtract(fixnum x, fixnum y, factor_vm* parent) {
 
 // Allocates memory
 inline void factor_vm::overflow_fixnum_multiply(fixnum x, fixnum y) {
+  JIT_WRITABLE
   data_root<bignum> bx(fixnum_to_bignum(x), this);
   data_root<bignum> by(fixnum_to_bignum(y), this);
   cell ret = tag<bignum>(bignum_multiply(bx.untagged(), by.untagged()));
   ctx->replace(ret);
+  JIT_EXECUTABLE
 }
 
 VM_C_API void overflow_fixnum_multiply(fixnum x, fixnum y, factor_vm* parent) {

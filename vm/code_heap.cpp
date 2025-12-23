@@ -13,13 +13,17 @@ code_heap::code_heap(cell size) {
   if (!seg)
     fatal_error("Out of memory in code_heap constructor", size);
 
-  cell start = seg->start + getpagesize() + seh_area_size;
+  safepoint_seg = std::make_unique<segment>(align_page(getpagesize()), false);
+  if (!safepoint_seg)
+    fatal_error("Out of memory in code_heap constructor", size);
+
+  cell start = seg->start + seh_area_size;
 
   allocator = std::make_unique<free_list_allocator<code_block>>(seg->end - start, start);
 
   // See os-windows-x86.64.cpp for seh_area usage
-  safepoint_page = seg->start;
-  seh_area = reinterpret_cast<char*>(seg->start) + getpagesize();
+  safepoint_page = safepoint_seg->start;
+  seh_area = reinterpret_cast<char*>(seg->start);
 }
 
 code_heap::~code_heap() = default;
