@@ -72,6 +72,9 @@ M: vocab-link summary vocab-in-root-summary ;
 : vocab-platforms-path ( vocab -- path/f )
     "platforms.txt" vocab-file-path ;
 
+: vocab-architectures-path ( vocab -- path/f )
+    "architectures.txt" vocab-file-path ;
+
 ERROR: bad-platform name ;
 
 : vocab-platforms ( vocab -- platforms )
@@ -81,10 +84,20 @@ ERROR: bad-platform name ;
 : supported-platform? ( platforms -- ? )
     [ t ] [ [ os swap class<= ] any? ] if-empty ;
 
+ERROR: bad-architecture name ;
+
+: vocab-architectures ( vocab -- architectures )
+    "architectures.txt" vocab-file-lines
+    [ [ "system" lookup-word ] [ bad-architecture ] ?unless ] map ;
+
+: supported-architecture? ( architectures -- ? )
+    [ t ] [ [ cpu swap class<= ] any? ] if-empty ;
+
 : don't-load? ( vocab -- ? )
     {
         [ vocab-tags "not loaded" swap member? ]
         [ vocab-platforms supported-platform? not ]
+        [ vocab-architectures supported-architecture? not ]
     } 1|| ;
 
 : don't-test? ( vocab -- ? )
@@ -98,6 +111,14 @@ TUPLE: unsupported-platform vocab requires ;
 M: unsupported-platform summary
     drop "Current operating system not supported by this vocabulary" ;
 
+TUPLE: unsupported-architecture vocab requires ;
+
+: throw-unsupported-architecture ( vocab requires -- )
+    unsupported-architecture boa throw-continue ;
+
+M: unsupported-architecture summary
+    drop "Current CPU not supported by this vocabulary" ;
+
 : file-exists?, ( path -- )
     [ [ , ] when-file-exists ] when* ;
 
@@ -106,6 +127,7 @@ M: unsupported-platform summary
         {
             [ vocab-authors-path file-exists?, ]
             [ vocab-platforms-path file-exists?, ]
+            [ vocab-architectures-path file-exists?, ]
             [ vocab-resources-path file-exists?, ]
             [ vocab-summary-path file-exists?, ]
             [ vocab-tags-path file-exists?, ]
@@ -113,6 +135,11 @@ M: unsupported-platform summary
     ] { } make ;
 
 [
-    dup vocab-platforms dup supported-platform?
-    [ 2drop ] [ [ vocab-name ] dip throw-unsupported-platform ] if
+    [
+        dup vocab-platforms dup supported-platform?
+        [ 2drop ] [ [ vocab-name ] dip throw-unsupported-platform ] if
+    ] [
+        dup vocab-architectures dup supported-architecture?
+        [ 2drop ] [ [ vocab-name ] dip throw-unsupported-architecture ] if
+    ] bi
 ] check-vocab-hook set-global
