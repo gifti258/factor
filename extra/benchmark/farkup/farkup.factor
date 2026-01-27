@@ -7,3 +7,5 @@ IN: benchmark.farkup
     "vocab:webapps/wiki/initial-content/Farkup.txt"
     utf8 file-contents
     '[ _ convert-farkup length 5300 assert= ] times ;
+
+MAIN: farkup-benchmark
