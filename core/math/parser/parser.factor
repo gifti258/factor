@@ -1,4 +1,5 @@
-! Copyright (C) 2009 Joe Groff, 2013 John Benediktsson
+! Copyright (C) 2009 Joe Groff, 2013 John Benediktsson.
+! Copyright (C) 2024 Giftpflanze.
 ! See https://factorcode.org/license.txt for BSD license.
 USING: accessors byte-arrays combinators kernel kernel.private
 layouts make math math.order math.private sbufs sequences
