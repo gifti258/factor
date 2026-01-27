@@ -97,12 +97,12 @@ inline cell object::slot_count() const {
 // tag before being stored back to the original location.
 
 // Slots storing immediate values are left unchanged and the visitor does
-// inspect them.
+// not inspect them.
 
 // This is used by GC's copying, sweep and compact phases, and the
 // implementation of the become primitive.
 
-// Iteration is driven by visit_*() methods. Only one of them define GC
+// Iteration is driven by visit_*() methods. Only one of them defines GC
 // roots:
 //  - visit_all_roots()
 

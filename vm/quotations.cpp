@@ -275,7 +275,7 @@ void quotation_jit::emit_mega_cache_lookup(cell methods_, fixnum index,
   push(cache.value());
   word_call(parent->special_objects[MEGA_MISS_WORD]);
 
-  // Now the new method has been stored into the cache, and its on
+  // Now the new method has been stored into the cache, and it's on
   // the stack.
   emit(parent->special_objects[JIT_EPILOG]);
   emit(parent->special_objects[JIT_EXECUTE]);

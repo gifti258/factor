@@ -21,7 +21,7 @@ If you have found a bug in the Factor distribution,
 - All contributions to Factor are mandatorily under the [BSD license](LICENSE.txt). In new vocabularies, you must add a comment stating the same. You can use your real name or your GitHub nickname.
   See [this](https://github.com/factor/factor/blob/master/core/alien/alien.factor) for an example.
   - If you are fixing a bug, then you can add your name to the copyright section of the vocabulary, adding the current year if necessary.
-  - If you make substantial changes and want to be included in bugfixes and future direction for the vocabulary, add you name to the vocabulary's AUTHORS.txt as well.
+  - If you make substantial changes and want to be included in bugfixes and future direction for the vocabulary, add your name to the vocabulary's AUTHORS.txt as well.
 - Do not submit features without creating a feature request first.
 - The repository is structured as follows:
   - `basis`: Vocabularies which are well-tested, well-documented, and have a wide variety of uses in Factor code.
