@@ -3,6 +3,11 @@ classes.struct combinators kernel system unix unix.time
 unix.types vocabs vocabs.loader ;
 IN: unix.ffi
 
+{
+    { [ cpu x86? ] [ "unix.ffi.macos.x86" require ] }
+    { [ cpu arm.64? ] [ "unix.ffi.macos.arm" require ] }
+} cond
+
 CONSTANT: MAXPATHLEN 1024
 
 CONSTANT: O_RDONLY   0x0000
@@ -124,13 +129,6 @@ STRUCT: utmpx
 CONSTANT: __DARWIN_MAXPATHLEN 1024
 CONSTANT: __DARWIN_MAXNAMELEN 255
 CONSTANT: __DARWIN_MAXNAMELEN+1 256
-
-STRUCT: dirent
-    { d_ino ino_t }
-    { d_reclen __uint16_t }
-    { d_type __uint8_t }
-    { d_namlen __uint8_t }
-    { d_name { char __DARWIN_MAXNAMELEN+1 } } ;
 
 STRUCT: sf_hdtr
     { headers void* }
