@@ -23,7 +23,6 @@ IN: cpu.arm.64.assembler.tests
 0x47000054 [ 2 insns BVC ] test-insn
 0x46000054 [ 2 insns BVS ] test-insn
 0xa1000054 [ 5 insns BNE ] test-insn
-! 0x40033fd6 [ CACHE-MISS BLR ] test-insn
 0x60033fd6 [ CACHE-MISS BLR ] test-insn
 0x00001fd6 [ RETURN BR ] test-insn
 0x5f0109eb [ ds-0 temp CMP ] test-insn
@@ -38,7 +37,6 @@ IN: cpu.arm.64.assembler.tests
 0xfd7bc1a8 [ FP LR SP 16 [post] LDP ] test-insn
 0x800640f9 [ arg1 CTX 8 [+] LDR ] test-insn
 0xa0865ff8 [ arg1 DS -8 [post] LDR ] test-insn
-! 0x690340f9 [ temp MEGA-HITS [] LDR ] test-insn
 0x890340f9 [ temp MEGA-HITS [] LDR ] test-insn
 0x207961f8 [ X0 temp X1 3 <LSL*> [+] LDR ] test-insn
 0x49000058 [ temp 2 insns LDR ] test-insn
