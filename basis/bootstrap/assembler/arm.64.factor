@@ -111,7 +111,7 @@ big-endian off
     temp CTX context-callstack-save-offset [+] STR
     jit-save-teb
     temp CTX context-callstack-bottom-offset [+] LDR
-    SP temp MOV
+    SP temp 16 ADD
     FP XZR MOV
     jit-update-teb
     DS RS CTX context-datastack-offset [+] LDP
@@ -379,21 +379,22 @@ big-endian off
     { eq? [ EQ jit-compare ] }
     { set-callstack [
         ds-0 DS -8 [post] LDR
-        arg1 CTX context-callstack-bottom-offset [+] LDR
-        arg2 ds-0 callstack-top-offset ADD
-        arg3 ds-0 callstack-length-offset [+] LDR
-        arg3 dup tag-bits get LSR
-        arg1 dup arg3 SUB
-        SP arg1 MOV
-        FP SP MOV
-        "factor_memcpy" LDR=BLR rel-dlsym
-        top SP MOV
-        *top top [] LDR
-        *top 5 insns CBZ
-        *top dup top ADD
-        *top top [] STR
-        top *top MOV
-        -5 insns B
+        bottom CTX context-callstack-bottom-offset [+] LDR
+        src ds-0 callstack-top-offset ADD
+        temp ds-0 callstack-length-offset [+] LDR
+        top bottom temp tag-bits get <LSR> SUB
+        SP top MOV
+        top bottom CMP
+        10 insns BGE
+        temp1 temp2 src 16 [post] LDP
+        FP top temp1 ADD
+        FP temp2 top 16 [post] STP
+        top FP CMP
+        -6 insns BGE
+        temp1 temp2 src 16 [post] LDP
+        temp1 temp2 top 16 [post] STP
+        -4 insns B
+        -10 insns B
         FP LR SP 16 [post] LDP
         RET
     ] }
@@ -592,9 +593,8 @@ big-endian off
         CTX RETURN MOV
         jit-update-teb
         CTX VM vm-context-offset [+] STR
-        temp CTX context-callstack-top-offset [+] LDR
-        SP temp MOV
-        FP XZR MOV
+        FP CTX context-callstack-top-offset [+] LDR
+        SP FP MOV
         DS RS CTX context-datastack-offset [+] LDP
         ds-1 DS 8 [pre] STR
         arg1 ds-0 MOV
@@ -605,9 +605,8 @@ big-endian off
         DS RS CTX context-datastack-offset [+] STP
         arg1 VM MOV
         "reset_context" LDR=BLR*
-        temp CTX context-callstack-top-offset [+] LDR
-        SP temp MOV
-        FP XZR MOV
+        FP CTX context-callstack-top-offset [+] LDR
+        SP FP MOV
         DS RS CTX context-datastack-offset [+] LDP
         arg1 DS -8 [post] LDR
         temp arg1 quot-entry-point-offset [+] LDR

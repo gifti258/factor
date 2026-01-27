@@ -6,7 +6,7 @@ inline static void flush_icache(cell start, cell len) {
   __builtin___clear_cache((char *)start, (char *)(start + len));
 }
 
-#define CALLSTACK_BOTTOM(ctx) (ctx->callstack_seg->end)
+#define CALLSTACK_BOTTOM(ctx) (ctx->callstack_seg->end - 16)
 
 inline static unsigned int call_site_opcode(cell return_address) {
   return *(unsigned int*)(return_address - 4);

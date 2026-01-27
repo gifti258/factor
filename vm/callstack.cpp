@@ -42,7 +42,7 @@ cell factor_vm::capture_callstack(context* ctx) {
   // moving the callstack through memory. They will be converted back
   // in set-callstack.
   cell dst = stack->top();
-  while (*(cell*)top != 0) {
+  while (top < bottom) {
     *(cell*)dst = *(cell*)top - top;
     top = *(cell*)top;
     dst += *(cell*)dst;
