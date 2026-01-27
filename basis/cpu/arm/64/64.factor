@@ -639,10 +639,10 @@ M:: arm.64 %allot ( DST size class TEMP -- )
     temp card-mark MOV
     CARD dup card-bits LSR
     TEMP VM vm-cards-offset-offset [+] LDR
-    temp CARD TEMP [+] STRB
+    temp TEMP CARD [+] STRB
     CARD dup deck-bits card-bits - LSR
     TEMP VM vm-decks-offset-offset [+] LDR
-    temp CARD TEMP [+] STRB ;
+    temp TEMP CARD [+] STRB ;
 
 M:: arm.64 %write-barrier ( SRC SLOT scale tag CARD TEMP -- )
     CARD SRC SLOT ADD
