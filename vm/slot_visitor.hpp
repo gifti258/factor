@@ -263,7 +263,7 @@ template <typename Fixup> struct call_frame_slot_visitor {
     FACTOR_PRINT("call frame code block " << compiled << " with offset "
                  << return_address);
 #endif
-    cell* stack_pointer = (cell*)(frame_top + FRAME_RETURN_ADDRESS);
+    cell* stack_pointer = (cell*)frame_top;
     uint8_t* bitmap = info->gc_info_bitmap();
 
     // Subtract old value of base pointer from every derived pointer.

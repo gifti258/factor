@@ -32,7 +32,7 @@ M: arm.64 machine-registers
 
 M: arm.64 frame-reg FP ;
 
-M: arm.64 gc-root-offset n>> spill-offset cell /i ;
+M: arm.64 gc-root-offset n>> spill-offset 16 + 8 /i ;
 
 : imm>halfwords ( uimm64 -- assoc )
     4 <iota> [
