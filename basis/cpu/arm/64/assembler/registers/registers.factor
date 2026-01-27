@@ -82,6 +82,9 @@ ALIAS: ds-0        X10
 ALIAS: ds-1        X11
 ALIAS: ds-2        X12
 ALIAS: ds-3        X13
+ALIAS: src         X11
+ALIAS: top         X12
+ALIAS: bottom      X13
 ALIAS: temp1       X14
 ALIAS: temp2       X15
 ALIAS: quotient    X14
@@ -89,12 +92,9 @@ ALIAS: remainder   X15
 ALIAS: obj         X14
 ALIAS: type        X15
 ALIAS: cache       X14
-ALIAS: top         X11
-ALIAS: *top        X12
 
 ALIAS: IP0         X16
 ALIAS: IP1         X17
-
 ALIAS: PR          X18
 
 ALIAS: VM          X19

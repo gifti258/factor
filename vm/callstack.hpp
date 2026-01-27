@@ -19,7 +19,6 @@ inline void factor_vm::iterate_callstack_object(callstack* stack_,
   while (stack_offset < stack_length) {
     cell frame_top = stack->frame_top_at(stack_offset);
     cell frame_size = *(cell*)frame_top;
-    if (frame_size == 0) return;
     cell addr = *(cell*)(frame_top + FRAME_RETURN_ADDRESS);
     cell fixed_addr = Fixup::translated_code_block_map
                           ? (cell)fixup.translate_code((code_block*)addr)
@@ -69,7 +68,6 @@ void factor_vm::iterate_callstack(context* ctx, Iterator& iterator,
 
 #ifdef FACTOR_ARM64
   while (top < bottom) {
-    if (*(cell*)top == 0) return;
     cell addr = *(cell*)(top + FRAME_RETURN_ADDRESS);
     FACTOR_ASSERT(addr != 0);
 
