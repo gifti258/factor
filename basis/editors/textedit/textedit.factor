@@ -1,5 +1,4 @@
-USING: definitions io.launcher kernel math math.parser parser
-namespaces prettyprint editors make ;
+USING: editors kernel make ;
 IN: editors.textedit
 
 SINGLETON: textedit
