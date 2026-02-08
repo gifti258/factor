@@ -1,11 +1,13 @@
 ! Copyright (C) 2010, 2011 Joe Groff, Slava Pestov.
 ! See https://factorcode.org/license.txt for BSD license.
-USING: accessors alien.syntax assocs cocoa cocoa.classes
-cocoa.enumeration cocoa.plists.private core-foundation
-core-foundation.data core-foundation.dictionaries
+USING: accessors alien.data alien.syntax assocs cocoa
+cocoa.classes cocoa.enumeration cocoa.plists.private combinators
+core-foundation core-foundation.data
+core-foundation.dictionaries core-foundation.launch-services
 core-foundation.strings core-foundation.urls core-graphics
 core-graphics.private core-graphics.types destructors
-images.loader io kernel math sequences system system-info ;
+images.loader io kernel math sequences system system-info
+unicode ;
 IN: images.loader.cocoa
 
 SINGLETON: ns-image
@@ -69,3 +71,33 @@ M: ns-image stream>image*
             CGImageDestinationFinalize drop
         ] bi
     ] with-destructors ;
+
+: extension>uttype ( extension -- CFString )
+    >lower {
+        { "png" [ kUTTypePNG ] }
+        { "jpg" [ kUTTypeJPEG ] }
+        { "jpeg" [ kUTTypeJPEG ] }
+        { "tif" [ kUTTypeTIFF ] }
+        { "tiff" [ kUTTypeTIFF ] }
+        { "gif" [ kUTTypeGIF ] }
+        { "bmp" [ kUTTypeBMP ] }
+        { "ico" [ kUTTypeICO ] }
+    } case ;
+
+:: write-ns-image ( image extension -- )
+    [
+        f 0 CFDataCreateMutable &CFRelease :> data
+        data extension extension>uttype 1 f
+        CGImageDestinationCreateWithData &CFRelease
+        [
+            image image>CGImage &CFRelease
+            f CGImageDestinationAddImage
+        ] [
+            CGImageDestinationFinalize drop
+        ] bi
+        data CFDataGetBytePtr data CFDataGetLength
+        memory>byte-array write
+    ] with-destructors ;
+
+M: ns-image image>stream
+    drop write-ns-image ;

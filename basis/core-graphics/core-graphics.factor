@@ -1,13 +1,11 @@
 ! Copyright (C) 2009 Slava Pestov.
 ! See https://factorcode.org/license.txt for BSD license.
-
 USING: accessors alien alien.c-types alien.data
-alien.destructors alien.syntax colors
+alien.destructors alien.syntax colors core-foundation.data
 core-foundation.dictionaries core-foundation.strings
 core-foundation.urls core-foundation.utilities
-core-graphics.types destructors images images.memory kernel
-libc math opengl.gl sequences ;
-
+core-graphics.types destructors images images.memory kernel libc
+math opengl.gl sequences ;
 IN: core-graphics
 
 TYPEDEF: int CGImageAlphaInfo
@@ -123,6 +121,13 @@ FUNCTION: size_t CGImageGetHeight (
 
 FUNCTION: CGImageDestinationRef CGImageDestinationCreateWithURL (
    CFURLRef url,
+   CFStringRef type,
+   size_t count,
+   CFDictionaryRef options
+)
+
+FUNCTION: CGImageDestinationRef CGImageDestinationCreateWithData (
+   CFMutableDataRef data,
    CFStringRef type,
    size_t count,
    CFDictionaryRef options

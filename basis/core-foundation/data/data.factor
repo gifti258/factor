@@ -16,5 +16,13 @@ FUNCTION: CFDataRef CFDataCreate ( CFAllocatorRef allocator, UInt8* bytes, CFInd
 
 FUNCTION: CFTypeID CFGetTypeID ( CFTypeRef cf )
 
+TYPEDEF: void* CFMutableDataRef
+
+FUNCTION: CFMutableDataRef CFDataCreateMutable ( CFAllocatorRef allocator, CFIndex capacity )
+
+FUNCTION: UInt8* CFDataGetBytePtr ( CFDataRef theData )
+
+FUNCTION: CFIndex CFDataGetLength ( CFDataRef theData )
+
 : <CFData> ( byte-array -- alien )
     [ f ] dip dup length CFDataCreate ;
