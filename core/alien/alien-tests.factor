@@ -12,7 +12,7 @@ IN: alien.tests
 { f } [ 0 <alien> ] unit-test
 { f } [ 0 f <displaced-alien> ] unit-test
 
-! Testing the various bignum accessor
+! Testing the various bignum accessors
 10 <byte-array> "dump" set
 
 [ "dump" get alien-address ] must-fail
