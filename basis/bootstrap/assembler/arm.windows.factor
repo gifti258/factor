@@ -1,6 +1,7 @@
 ! Copyright (C) 2024 Giftpflanze.
 ! See https://factorcode.org/license.txt for BSD license.
-USING: compiler.constants cpu.arm.64.assembler layouts ;
+USING: compiler.constants cpu.arm.64.assembler
+cpu.arm.64.assembler.registers layouts ;
 IN: bootstrap.assembler.arm
 
 : teb-stack-base-offset ( -- n ) 1 bootstrap-cells ;
