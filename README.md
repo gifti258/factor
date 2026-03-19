@@ -1,6 +1,9 @@
-# Factor
+# Factor - Anti-Slop Fork
 
-![Build](https://github.com/factor/factor/actions/workflows/build.yml/badge.svg)
+Hi. This fork of Factor branches from version 0.100, and refuses contributions
+from slop purveyors, COVID denialists, transphobes, and fascists.
+
+![Build](https://github.com/theAlexes/factor/actions/workflows/build.yml/badge.svg)
 
 Factor is a [concatenative](https://www.concatenative.org), stack-based
 programming language with [high-level
@@ -30,7 +33,7 @@ a boot image stored on factorcode.org.
 
 To check out Factor:
 
-* git clone https://github.com/factor/factor.git
+* git clone https://github.com/theAlexes/factor.git
 * `cd factor`
 
 To build the latest complete Factor system from git, either use the
