@@ -41,7 +41,6 @@ build script:
 
 * Unix: `./build.sh update`
 * Windows: `build.cmd`
-* M1 macOS: `arch -x86_64 ./build.sh update`
 
 or download the correct boot image for your system from
 https://downloads.factorcode.org/images/master/, put it in the `factor`
@@ -51,10 +50,6 @@ directory and run:
 * Windows: `nmake /f Nmakefile x86-64` and then `factor.com -i=boot.windows-x86.64.image`
 
 Now you should have a complete Factor system ready to run.
-
-Factor does not yet work on arm64 cpus. There is an arm64 assembler
-in `cpu.arm.64.assembler` and we are working on a port and also looking for
-contributors.
 
 More information on [building factor](https://concatenative.org/wiki/view/Factor/Building%20Factor)
 and [system requirements](https://concatenative.org/wiki/view/Factor/Requirements).
