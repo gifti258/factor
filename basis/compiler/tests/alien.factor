@@ -92,18 +92,13 @@ FUNCTION: c-string ffi_test_15 ( c-string x, c-string y )
 { "bar" } [ "xy" "xy" ffi_test_15 ] unit-test
 [ 1 2 ffi_test_15 ] must-fail
 
-! Indirect result register not implemented
-cpu arm.64? [
+STRUCT: BAR { x long } { y long } { z long } ;
 
-    STRUCT: BAR { x long } { y long } { z long } ;
+FUNCTION: BAR ffi_test_16 ( long x, long y, long z )
 
-    FUNCTION: BAR ffi_test_16 ( long x, long y, long z )
-
-    { 11 6 -7 } [
-        11 6 -7 ffi_test_16 [ x>> ] [ y>> ] [ z>> ] tri
-    ] unit-test
-
-] unless
+{ 11 6 -7 } [
+    11 6 -7 ffi_test_16 [ x>> ] [ y>> ] [ z>> ] tri
+] unit-test
 
 STRUCT: TINY { x int } ;
 
@@ -149,18 +144,13 @@ FUNCTION: TINY ffi_test_17 ( int x )
 
 { 25 } [ 2 3 4 5 ffi_test_18 ] unit-test
 
-! Indirect result register not implemented
-cpu arm.64? [
+: ffi_test_19 ( x y z -- BAR )
+    BAR "f-stdcall" "ffi_test_19" { long long long } f
+    alien-invoke gc ;
 
-    : ffi_test_19 ( x y z -- BAR )
-        BAR "f-stdcall" "ffi_test_19" { long long long } f
-        alien-invoke gc ;
-
-    { 11 6 -7 } [
-        11 6 -7 ffi_test_19 [ x>> ] [ y>> ] [ z>> ] tri
-    ] unit-test
-
-] unless
+{ 11 6 -7 } [
+    11 6 -7 ffi_test_19 [ x>> ] [ y>> ] [ z>> ] tri
+] unit-test
 
 : multi_ffi_test_18 ( w x y z w' x' y' z' -- int int )
     [ int "f-stdcall" "ffi_test_18" { int int int int } f alien-invoke ]
@@ -983,7 +973,7 @@ FUNCTION: void* bug1021_test_3 ( c-string a )
     10000 [ 0 doit 33 assert= ] times
 ] unit-test
 
-! Tests for System V AMD64 ABI 
+! Tests for System V AMD64 ABI
 STRUCT: test_struct_66 { mem1 ulong } { mem2 ulong } ;
 STRUCT: test_struct_68 { mem1 ulong } { mem2 ulong } { mem3 ulong } ;
 STRUCT: test_struct_69 { mem1 float } { mem2 ulong } { mem3 ulong } ;
@@ -991,7 +981,7 @@ FUNCTION: ulong ffi_test_66 ( ulong a, ulong b, ulong c, test_struct_66 d, test_
 FUNCTION: ulong ffi_test_67 ( ulong a, ulong b, ulong c, test_struct_66 d, test_struct_66 e ulong _f )
 FUNCTION: ulong ffi_test_68 ( ulong a, ulong b, ulong c, test_struct_66 d, test_struct_68 e test_struct_66 _f )
 FUNCTION: ulong ffi_test_69 ( ulong a, ulong b, ulong c, test_struct_66 d, test_struct_69 e test_struct_66 _f )
-FUNCTION: ulong ffi_test_70 ( test_struct_68 a test_struct_68 b, test_struct_66 c )  
+FUNCTION: ulong ffi_test_70 ( test_struct_68 a test_struct_68 b, test_struct_66 c )
 
 { 28 } [ 1 2 3 S{ test_struct_66 f 4 5 } S{ test_struct_66 f 6 7 } ffi_test_66 ] unit-test
 
@@ -1020,7 +1010,7 @@ FUNCTION: ulong ffi_test_70 ( test_struct_68 a test_struct_68 b, test_struct_66 
         a b + c +
         d [ mem1>> + ] [ mem2>> + ] bi
         e [ mem1>> + ] [ mem2>> + ] bi
-        _f 2 * + 
+        _f 2 * +
     ] alien-callback ;
 
 : callback-15-test ( a b c d e _f callback -- result )
@@ -1083,7 +1073,7 @@ FUNCTION: ulong ffi_test_70 ( test_struct_68 a test_struct_68 b, test_struct_66 
 : callback-18 ( -- callback )
     ulong { test_struct_68 test_struct_68 test_struct_66 } cdecl
     [| a b c |
-        a [ mem1>> ] [ mem2>> + ] [ mem3>> + ] tri     
+        a [ mem1>> ] [ mem2>> + ] [ mem3>> + ] tri
         b [ mem1>> + ] [ mem2>> + ] [ mem3>> + ] tri
         c [ mem1>> + ] [ mem2>> + ] bi
     ] alien-callback ;

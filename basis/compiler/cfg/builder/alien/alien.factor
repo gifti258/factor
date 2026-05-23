@@ -1,13 +1,14 @@
 ! Copyright (C) 2008, 2010 Slava Pestov.
 ! See https://factorcode.org/license.txt for BSD license.
-USING: accessors alien.c-types alien.libraries alien.strings arrays
-assocs classes.struct combinators compiler.cfg compiler.cfg.builder
-compiler.cfg.builder.alien.boxing compiler.cfg.builder.alien.params
-compiler.cfg.hats compiler.cfg.instructions compiler.cfg.registers
+USING: accessors alien.c-types alien.libraries alien.strings
+arrays assocs classes.struct combinators compiler.cfg
+compiler.cfg.builder compiler.cfg.builder.alien.boxing
+compiler.cfg.builder.alien.params compiler.cfg.hats
+compiler.cfg.instructions compiler.cfg.registers
 compiler.cfg.stacks compiler.cfg.stacks.local compiler.errors
-compiler.tree cpu.architecture kernel layouts make math namespaces
-sequences sequences.generalizations stack-checker.alien system
-words ;
+compiler.tree cpu.architecture cpu.arm.64.assembler.registers
+kernel layouts make math namespaces sequences
+sequences.generalizations stack-checker.alien system words ;
 IN: compiler.cfg.builder.alien
 
 : with-param-regs ( abi quot -- reg-values stack-values )
@@ -38,8 +39,12 @@ IN: compiler.cfg.builder.alien
 : prepare-struct-caller ( vregs reps return -- vregs' reps' return-vreg/f )
     dup large-struct? [
         heap-size cell f ^^local-allot [
-            '[ _ prefix ]
-            [ int-rep struct-return-on-stack? f 3array prefix ] bi*
+            cpu arm.64? [
+                int-rep XR 3array reg-values get push
+            ] [
+                '[ _ prefix ]
+                [ int-rep struct-return-on-stack? f 3array prefix ] bi*
+            ] if
         ] keep
     ] [ drop f ] if ;
 
