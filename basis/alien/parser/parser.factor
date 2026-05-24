@@ -113,15 +113,21 @@ PRIVATE>
 : scan-function-name ( -- return function )
     scan-c-type scan-token parse-pointers ;
 
-:: scan-c-args ( -- types names )
+:: (scan-c-args) ( -- types names n )
     V{ } clone :> types
     V{ } clone :> names
+    0 :> i!
+    f :> n!
     "(" expect scan-token [ dup ")" = ] [
+        dup "|" = [ drop i n! scan-token ] when
         parse-c-type
         scan-token "," ?tail drop
         parse-pointers [ types push ] [ names push ] bi*
         scan-token
-    ] until drop types names [ >array ] bi@ ;
+        i 1 + i!
+    ] until drop types names [ >array ] bi@ n ;
+
+: scan-c-args ( -- types names ) (scan-c-args) drop ;
 
 : function-effect ( names return -- effect )
     [ { } ] [ c-type-string 1array ] if-void <effect> ;
@@ -129,16 +135,16 @@ PRIVATE>
 : create-function ( name -- word )
     create-word-in dup reset-generic ;
 
-:: (make-function) ( return function library types names -- quot effect )
-    return library function types '[ _ _ _ _ f alien-invoke ]
+:: (make-function) ( return function library types names n -- quot effect )
+    return library function types n '[ _ _ _ _ _ alien-invoke ]
     names return function-effect ;
 
-:: make-function ( return function library types names -- word quot effect )
+:: make-function ( return function library types names n -- word quot effect )
     function create-function
-    return function library types names (make-function) ;
+    return function library types names n (make-function) ;
 
-: (FUNCTION:) ( -- return function library types names )
-    scan-function-name current-library get scan-c-args ;
+: (FUNCTION:) ( -- return function library types names n )
+    scan-function-name current-library get (scan-c-args) ;
 
 : callback-quot ( return types abi -- quot )
     '[ [ _ _ _ ] dip alien-callback ] ;
@@ -151,7 +157,7 @@ PRIVATE>
     type-word return types library library-abi callback-quot ( quot -- alien ) ;
 
 : (CALLBACK:) ( -- word quot effect )
-    (FUNCTION:) make-callback-type ;
+    (FUNCTION:) drop make-callback-type ;
 
 : global-quot ( type word -- quot )
     swap [ name>> current-library get ] dip
