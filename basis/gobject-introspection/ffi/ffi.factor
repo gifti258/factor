@@ -147,7 +147,7 @@ M: none-type return-type>c-type drop void ;
         [ identifier>> ]
         [ drop current-library get ]
         [ ?suffix-parameters-with-error parameter-names&types ]
-    } cleave make-function define-inline ;
+    } cleave f make-function define-inline ;
 
 : def-functions ( functions -- )
     [ def-function ] each ;
@@ -183,7 +183,7 @@ M: type type>data-type
             type type>parameter prefix
             parameter-names&types
         ]
-    } cleave make-function define-inline ;
+    } cleave f make-function define-inline ;
 
 : def-methods ( methods type -- )
     [ def-method ] curry each ;

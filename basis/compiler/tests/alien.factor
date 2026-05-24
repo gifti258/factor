@@ -942,8 +942,8 @@ FUNCTION: void* bug1021_test_1 ( void* s, int x )
 cpu arm.64? os macos? and [
 
     ! Varargs with non-float parameters works.
-    FUNCTION-ALIAS: do-sum-ints2 int ffi_test_64 ( int n, int a, int b )
-    FUNCTION-ALIAS: do-sum-ints3 int ffi_test_64 ( int n, int a, int b, int c )
+    FUNCTION-ALIAS: do-sum-ints2 int ffi_test_64 ( int n | int a, int b )
+    FUNCTION-ALIAS: do-sum-ints3 int ffi_test_64 ( int n | int a, int b, int c )
 
     { 30 60 } [
         2 10 20 do-sum-ints2
@@ -951,8 +951,8 @@ cpu arm.64? os macos? and [
     ] unit-test
 
     ! Varargs with non-floats doesn't work on windows
-    FUNCTION-ALIAS: do-sum-doubles2 double ffi_test_65 ( int n, double a, double b )
-    FUNCTION-ALIAS: do-sum-doubles3 double ffi_test_65 ( int n, double a, double b, double c )
+    FUNCTION-ALIAS: do-sum-doubles2 double ffi_test_65 ( int n | double a, double b )
+    FUNCTION-ALIAS: do-sum-doubles3 double ffi_test_65 ( int n | double a, double b, double c )
 
     os windows? [
         { 27.0 22.0 } [
