@@ -36,12 +36,14 @@ HELP: FUNCTION:
 { $values { "return" "a C return type" } { "name" "a C function name" } { "parameters" "a comma-separated sequence of type/name pairs; " { $snippet "type1 arg1, type2 arg2, ..." } } }
 { $description "Defines a new word " { $snippet "name" } " which calls the C library function with the same " { $snippet "name" } " in the logical library given by the most recent " { $link POSTPONE: LIBRARY: } " declaration."
 $nl
-"The new word must be compiled before being executed." }
+"The new word must be compiled before being executed."
+$nl
+"Use " { $snippet "|" } " to separate variadic parameters from fixed parameters." }
 { $examples
 "For example, suppose the " { $snippet "foo" } " library exports the following function:"
 { $code
     "void the_answer(char* question, int value) {"
-    "    printf(\"The answer to %s is %d.\n\",question,value);"
+    "    printf(\"The answer to %s is %d.\\n\",question,value);"
     "}"
 }
 "You can define a word for invoking it:"
@@ -51,7 +53,10 @@ $nl
     "The answer to the question is 42."
 } }
 "Using the " { $link c-string } " type instead of " { $snippet "char*" } " causes the FFI to automatically convert Factor strings to C strings. See " { $link "c-strings" } " for more information on using strings with the FFI."
-{ $notes "To make a Factor word with a name different from the C function, use " { $link POSTPONE: FUNCTION-ALIAS: } "." } ;
+{ $notes
+"Note that the commas are only syntax sugar and can be omitted. They serve no purpose other than to make the declaration easier to read."
+$nl
+"To make a Factor word with a name different from the C function, use " { $link POSTPONE: FUNCTION-ALIAS: } "." } ;
 
 HELP: FUNCTION-ALIAS:
 { $syntax "FUNCTION-ALIAS: factor-name
@@ -59,8 +64,9 @@ HELP: FUNCTION-ALIAS:
 { $values { "factor-name" "a Factor word name" } { "return" "a C return type" } { "name" "a C function name" } { "parameters" "a comma-separated sequence of type/name pairs; " { $snippet "type1 arg1, type2 arg2, ..." } } }
 { $description "Defines a new word " { $snippet "factor-name" } " which calls the C library function named " { $snippet "c_name" } " in the logical library given by the most recent " { $link POSTPONE: LIBRARY: } " declaration."
 $nl
-"The new word must be compiled before being executed." }
-{ $notes "Note that the parentheses and commas are only syntax sugar and can be omitted. They serve no purpose other than to make the declaration easier to read." } ;
+"The new word must be compiled before being executed."
+$nl
+"Use " { $snippet "|" } " to separate variadic parameters from fixed parameters." } ;
 
 { POSTPONE: FUNCTION: POSTPONE: FUNCTION-ALIAS: } related-words
 
