@@ -1,7 +1,7 @@
 USING: alien alien.libraries compiler.cfg compiler.cfg.builder
-compiler.cfg.instructions compiler.errors compiler.tree help.markup
-help.syntax literals make multiline sequences stack-checker.alien
-strings ;
+compiler.cfg.instructions compiler.errors compiler.tree
+help.markup help.syntax literals make math multiline sequences
+stack-checker.alien strings ;
 IN: compiler.cfg.builder.alien
 
 <<
@@ -48,7 +48,7 @@ HELP: emit-callback-return
 { $description "Emits a " { $link ##callback-outputs } " instruction for the " { $link #alien-callback } " if needed." } ;
 
 HELP: unbox-parameters
-{ $values { "parameters" sequence } { "vregs" sequence } { "reps" sequence } }
+{ $values { "parameters" sequence } { "varargs?" { $maybe integer } } { "fixed-vregs" sequence } { "fixed-reps" sequence } { "var-vregs" sequence } { "var-reps" sequence } }
 { $description "Unboxes a sequence of parameters to send to an ffi function." } ;
 
 ARTICLE: "compiler.cfg.builder.alien"

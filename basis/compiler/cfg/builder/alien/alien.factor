@@ -28,13 +28,16 @@ IN: compiler.cfg.builder.alien
     struct-return-area set
     stack-params set ; inline
 
-: unbox-parameters ( parameters -- vregs reps )
-    [
+: (unbox-parameters) ( indices parameters -- vregs reps )
+    [ [ <ds-loc> peek-loc ] [ base-type ] bi* unbox-parameter ]
+    2 2 mnmap [ concat ] bi@ ;
+
+: unbox-parameters ( parameters varargs? -- fixed-vregs fixed-reps var-vregs var-reps )
+    '[
         [ length <iota> <reversed> ] keep
-        [ [ <ds-loc> peek-loc ] [ base-type ] bi* unbox-parameter ]
-        2 2 mnmap [ concat ] bi@
-    ]
-    [ length neg <ds-loc> inc-stack ] bi ;
+        _ over length or '[ _ cut-slice ] bi@ swapd
+        [ (unbox-parameters) ] 2bi@
+    ] [ length neg <ds-loc> inc-stack ] bi ;
 
 : prepare-struct-caller ( vregs reps return -- vregs' reps' return-vreg/f )
     dup large-struct? [
@@ -48,29 +51,27 @@ IN: compiler.cfg.builder.alien
         ] keep
     ] [ drop f ] if ;
 
-: (handle-macos-arm64-varargs) ( params -- )
-    function>> { "fcntl" "open" } member? os macos? cpu arm.64? and and
-    [ int-regs [ 2 tail* ] change ] when ;
-
-: handle-macos-arm64-varargs ( params -- )
-    dup alien-invoke-params?
-    [ (handle-macos-arm64-varargs) ] [ drop ] if ;
-
 : (caller-parameters) ( vregs reps -- )
     [ first3 next-parameter ] 2each ;
+
+: (caller-var-parameters) ( vregs reps -- )
+    [ first t f next-parameter ] 2each ;
+
+: caller-var-parameters ( vregs reps -- )
+    cpu arm.64? os macos? and
+    [ (caller-var-parameters) ] [ (caller-parameters) ] if ;
 
 : caller-parameters ( params -- reg-inputs stack-inputs )
     {
         [ abi>> ]
         [ parameters>> ]
+        [ varargs?>> ]
         [ return>> ]
-        [ ]
     } cleave
     '[
-        _ unbox-parameters
-        _ prepare-struct-caller struct-return-area set
-        _ handle-macos-arm64-varargs
-        (caller-parameters)
+        _ _ unbox-parameters
+        [ _ prepare-struct-caller struct-return-area set (caller-parameters) ]
+        [ caller-var-parameters ] 2bi*
     ] with-param-regs ;
 
 : prepare-caller-return ( params -- reg-outputs )

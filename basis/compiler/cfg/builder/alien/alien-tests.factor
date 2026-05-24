@@ -118,6 +118,8 @@ cpu x86.32?
 {
     { 2 4 }
     { { int-rep f f } { int-rep f f } }
+    { }
+    { }
     V{
         T{ ##unbox-any-c-ptr { dst 2 } { src 1 } }
         T{ ##unbox
@@ -131,9 +133,11 @@ cpu x86.32?
 {
     { 2 3 }
     { { int-rep f f } { int-rep f f } }
+    { }
+    { }
     V{ T{ ##unbox-any-c-ptr { dst 2 } { src 1 } } }
 } ? [
-    [ { c-string int } unbox-parameters ] V{ } make
+    [ { c-string int } f unbox-parameters ] V{ } make
 ] cfg-unit-test
 
 ! with-param-regs*
