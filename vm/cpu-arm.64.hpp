@@ -26,6 +26,7 @@ inline static void* get_call_target(cell return_address) {
 inline static void set_call_target(cell return_address, cell target) {
   check_call_site(return_address);
   *(unsigned int*)(return_address - 4) = (*(unsigned int*)(return_address - 4) & 0xfc000000) | ((target - return_address + 4) >> 2 & 0x03ffffff);
+  flush_icache(return_address - 4, 4);
 }
 
 inline static bool tail_call_site_p(cell return_address) {
