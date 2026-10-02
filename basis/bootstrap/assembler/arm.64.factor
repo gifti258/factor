@@ -305,8 +305,8 @@ big-endian off
         X4  X5   SP 16 [post] LDP
         X2  X3   SP 16 [post] LDP
         X0  X1   SP 16 [post] LDP
-        FP  LR   SP 16 [post] LDP
-        RET
+        IP0 IP1  SP 16 [post] LDP
+        IP1 (RET)
     ] }
 
     { drop [ DS dup 8 SUB ] }
