@@ -628,10 +628,7 @@ PRIVATE>
 
 : BR    ( Xn -- ) 0 unconditional-branch-reg ;
 : BLR   ( Xn -- ) 1 unconditional-branch-reg ;
-<PRIVATE
 : (RET) ( Xn -- ) 2 unconditional-branch-reg ;
-PRIVATE>
-
 : RET ( -- ) LR (RET) ;
 
 
