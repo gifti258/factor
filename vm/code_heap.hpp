@@ -7,11 +7,42 @@ const cell seh_area_size = 0;
 #endif
 
 #if defined(__APPLE__) && defined(FACTOR_ARM64)
-#define JIT_WRITABLE pthread_jit_write_protect_np(0);
-#define JIT_EXECUTABLE pthread_jit_write_protect_np(1);
+extern thread_local bool jit_thread_writable;
+
+inline void jit_set_writable() {
+  pthread_jit_write_protect_np(0);
+  jit_thread_writable = true;
+}
+
+inline void jit_set_executable() {
+  pthread_jit_write_protect_np(1);
+  jit_thread_writable = false;
+}
+
+struct jit_writable_scope {
+  bool flipped;
+  jit_writable_scope() : flipped(!jit_thread_writable) {
+    if (flipped)
+      jit_set_writable();
+  }
+  ~jit_writable_scope() {
+    if (flipped)
+      jit_set_executable();
+  }
+  jit_writable_scope(const jit_writable_scope&) = delete;
+  jit_writable_scope& operator=(const jit_writable_scope&) = delete;
+};
+
+inline void jit_force_executable() {
+  if (jit_thread_writable)
+    jit_set_executable();
+}
 #else
-#define JIT_WRITABLE
-#define JIT_EXECUTABLE
+struct jit_writable_scope {
+  jit_writable_scope() {}
+};
+inline void jit_set_writable() {}
+inline void jit_force_executable() {}
 #endif
 
 struct code_heap {

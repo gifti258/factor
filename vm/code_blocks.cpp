@@ -254,6 +254,7 @@ struct initial_code_block_visitor {
 
 // Perform all fixups on a code block
 void factor_vm::initialize_code_block(code_block* compiled, cell literals) {
+  jit_writable_scope jit_writable;
   initial_code_block_visitor visitor(this, literals);
   compiled->each_instruction_operand(visitor);
   compiled->flush_icache();
@@ -303,6 +304,7 @@ code_block* factor_vm::add_code_block(code_block_type type, cell code_,
   data_root<array> literals(literals_, this);
 
   cell code_length = array_capacity(code.untagged());
+  jit_writable_scope jit_writable;
   code_block* compiled = allot_code_block(code_length, type);
 
   compiled->owner = owner.value();

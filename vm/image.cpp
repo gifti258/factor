@@ -380,6 +380,7 @@ void factor_vm::primitive_save_image() {
   vm_char* path1_saved = safe_strdup(path1->data<vm_char>());
   vm_char* path2_saved = safe_strdup(path2->data<vm_char>());
 
+  jit_writable_scope jit_writable;
   if (then_die) {
     // strip out special_objects data which is set on startup anyway
     for (cell i = 0; i < special_object_count; i++)
